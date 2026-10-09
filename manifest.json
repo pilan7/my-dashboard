@@ -1,0 +1,15 @@
+{
+  "name": "דשבורד קישורים",
+  "short_name": "קישורים",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#f8fafc",
+  "theme_color": "#2563eb",
+  "icons": [
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/565/565547.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
