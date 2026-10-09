@@ -92,7 +92,7 @@
       gap: 6px;
     }
 
-    /* Category Accordion Header Button */
+    /* Accordion Header */
     .cat-header {
       display: flex;
       align-items: center;
@@ -107,11 +107,6 @@
       border: none;
       cursor: pointer;
       text-align: right;
-      transition: background 0.2s;
-    }
-
-    .cat-header:hover {
-      background-color: #112a45;
     }
 
     .cat-arrow {
@@ -121,14 +116,14 @@
     }
 
     .cat-header.collapsed .cat-arrow {
-      transform: rotate(0deg); /* ◄ פונה שמאלה */
+      transform: rotate(0deg);
     }
 
     .cat-header:not(.collapsed) .cat-arrow {
-      transform: rotate(-90deg); /* ▼ פונה מטה */
+      transform: rotate(-90deg);
     }
 
-    /* Link Buttons */
+    /* Links List */
     .cat-links {
       display: flex;
       flex-direction: column;
@@ -153,12 +148,10 @@
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
-      transition: background 0.15s, border-color 0.15s;
     }
 
     .link-card:hover {
       background-color: #edf2f7;
-      border-color: #cbd5e1;
       color: #1a202c;
     }
 
@@ -172,7 +165,6 @@
 </head>
 <body>
 
-  <!-- Top bar -->
   <div class="top-bar">
     <div class="brand">Perez</div>
     <div class="top-menu">
@@ -184,17 +176,13 @@
     </div>
   </div>
 
-  <!-- Top quick buttons -->
   <div class="quick-chips" id="quickChips"></div>
-
-  <!-- Main categories columns -->
   <div class="columns-container" id="columnsContainer"></div>
 
   <script>
-    const CSV_URL = 'https://docs.google.com/spreadsheets/d/1uNJ1JqjcHdCpi4YVe1gjIxBFPPfoNgCiel-_rh1YR7w/gviz/tq?tqx=out:csv&sheet=ראשי';
-    const CACHE_KEY = 'dashboard_sheet_cache';
-
-    // קטגוריות שיוצגו פתוחות כברירת מחדל כמו בצילום המסך
+    const SHEET_ID = '1uNJ1JqjcHdCpi4YVe1gjIxBFPPfoNgCiel-_rh1YR7w';
+    const CSV_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent('ראשי')}`;
+    const CACHE_KEY = 'dashboard_sheet_cache_v2';
     const DEFAULT_OPEN = ['שוטף', 'כללי'];
 
     function parseCSV(text) {
@@ -220,3 +208,113 @@
       }
       return rows;
     }
+
+    function renderDashboard(rows) {
+      const chipsContainer = document.getElementById('quickChips');
+      const colsContainer = document.getElementById('columnsContainer');
+      chipsContainer.innerHTML = '';
+      colsContainer.innerHTML = '';
+
+      const categories = {};
+      const chips = [];
+
+      for (let i = 1; i < rows.length; i++) {
+        const row = rows[i];
+        if (!row || row.length === 0) continue;
+        const cat = (row[0] || '').trim();
+        const title = (row[1] || '').trim();
+        const url = (row[2] || '#').trim();
+
+        if (!cat || !title) continue;
+
+        if (cat === 'כפתורים' || cat === 'מהיר') {
+          chips.push({ title, url });
+        } else {
+          if (!categories[cat]) categories[cat] = [];
+          categories[cat].push({ title, url });
+        }
+      }
+
+      chips.forEach(chip => {
+        const a = document.createElement('a');
+        a.className = 'chip-btn';
+        a.href = chip.url;
+        a.target = '_blank';
+        if (chip.title.includes('חיפוש')) {
+          a.innerHTML = `🔍 ${chip.title.replace('חיפוש', '').trim() || 'חיפוש'}`;
+        } else {
+          a.textContent = chip.title;
+        }
+        chipsContainer.appendChild(a);
+      });
+
+      for (const [catName, links] of Object.entries(categories)) {
+        const col = document.createElement('div');
+        col.className = 'category-col';
+
+        const isDefaultOpen = DEFAULT_OPEN.includes(catName);
+
+        const btn = document.createElement('button');
+        btn.className = `cat-header ${isDefaultOpen ? '' : 'collapsed'}`;
+        btn.innerHTML = `<span class="cat-arrow">◀</span><span>${catName}</span>`;
+
+        const linksList = document.createElement('div');
+        linksList.className = `cat-links ${isDefaultOpen ? '' : 'hidden'}`;
+
+        links.forEach(item => {
+          const link = document.createElement('a');
+          const isUrl = item.url && item.url !== '#';
+          link.className = `link-card ${!isUrl ? 'divider' : ''}`;
+          link.textContent = item.title;
+          if (isUrl) {
+            link.href = item.url;
+            link.target = '_blank';
+          }
+          linksList.appendChild(link);
+        });
+
+        btn.addEventListener('click', () => {
+          const isCollapsed = btn.classList.toggle('collapsed');
+          linksList.classList.toggle('hidden', isCollapsed);
+        });
+
+        col.appendChild(btn);
+        col.appendChild(linksList);
+        colsContainer.appendChild(col);
+      }
+    }
+
+    async function loadData() {
+      const cached = localStorage.getItem(CACHE_KEY);
+      if (cached) {
+        try {
+          renderDashboard(JSON.parse(cached));
+        } catch (e) {}
+      }
+
+      try {
+        const res = await fetch(CSV_URL);
+        if (res.ok) {
+          const csvText = await res.text();
+          const rows = parseCSV(csvText);
+          if (rows.length > 1) {
+            localStorage.setItem(CACHE_KEY, JSON.stringify(rows));
+            renderDashboard(rows);
+          }
+        }
+      } catch (err) {
+        console.warn('Fetch error:', err);
+      }
+    }
+
+    // ניקוי Cache ישן של Service Worker כדי לאפשר טעינה מיידית
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.getRegistrations().then(regs => {
+        for (let r of regs) r.update();
+      });
+    }
+
+    loadData();
+  </script>
+</body>
+</html>
