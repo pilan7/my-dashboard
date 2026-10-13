@@ -194,7 +194,7 @@
   "use strict";
 
   /* ================= הגדרות ================= */
-  var APP_VERSION  = "3.3";
+  var APP_VERSION  = "3.4";
   var SHEET_ID     = "1uNJ1JqjcHdCpi4YVe1gjIxBFPPfoNgCiel-_rh1YR7w";
   var DEFAULT_PAGE = "ראשי";                 // שורות ללא ערך בעמודה A שייכות לעמוד הזה
   var GVIZ_URL     = "https://docs.google.com/spreadsheets/d/" + SHEET_ID + "/gviz/tq?tqx=out:json";
@@ -579,12 +579,34 @@
   function noop() {}
   $("verText").textContent = "גרסה " + APP_VERSION;
 
+  var serverVersion = "";   // הגרסה שהשרת החזיר בבדיקה האחרונה (לאבחון)
+
   function hardReload() {
+    var btn = $("hardBtn");
+    btn.disabled = true; btn.textContent = "מרענן...";
+    try { sessionStorage.setItem("PEREZ_JUST_REFRESHED", "1"); } catch (e) {}
+    var went = false;
+    function go() {
+      if (went) return; went = true;
+      // כתובת ייחודית עוקפת גם את המטמון הרגיל של הדפדפן, לא רק את ה-Service Worker
+      location.replace(location.pathname + "?r=" + Date.now() + location.hash);
+    }
     var jobs = [];
     if (window.caches) jobs.push(caches.keys().then(function (ks) { return Promise.all(ks.map(function (k) { return caches.delete(k); })); }));
     if (navigator.serviceWorker) jobs.push(navigator.serviceWorker.getRegistrations().then(function (rs) { return Promise.all(rs.map(function (r) { return r.unregister(); })); }));
-    Promise.all(jobs).catch(noop).then(function () { location.reload(); });
+    Promise.all(jobs).catch(noop).then(go);
+    setTimeout(go, 3000);   // גיבוי: לא נתקעים אם אחת הפעולות לא חוזרת
   }
+
+  // אחרי רענון מלא: מנקים את הפרמטר מהכתובת ומציגים אישור
+  (function () {
+    if (/[?&]r=\d+/.test(location.search)) {
+      try { history.replaceState(null, "", location.pathname + location.hash); } catch (e) {}
+    }
+    var done = false;
+    try { done = sessionStorage.getItem("PEREZ_JUST_REFRESHED") === "1"; sessionStorage.removeItem("PEREZ_JUST_REFRESHED"); } catch (e) {}
+    if (done) $("verText").textContent = "גרסה " + APP_VERSION + " · רענון מלא בוצע ✓";
+  })();
 
   function updateDiag() {
     var d = $("diag");
@@ -594,6 +616,11 @@
     lines.push("Service Worker שולט בדף: " + (navigator.serviceWorker && navigator.serviceWorker.controller ? "כן" : "לא"));
     lines.push("רוחב מסך: " + window.innerWidth + " | אונליין: " + navigator.onLine);
     lines.push("עדכון נתונים אחרון: " + (lastSync ? fmtTime(lastSync) : "אין"));
+    lines.push("כתובת: " + location.href);
+    lines.push("גרסה שהשרת החזיר בבדיקה האחרונה: " + (serverVersion || "עוד לא נבדק / אין רשת"));
+    lines.push("Service Worker: " + (navigator.serviceWorker && navigator.serviceWorker.controller ? navigator.serviceWorker.controller.scriptURL : "—"));
+    var lastHard = parseInt(lsGet("PEREZ_HARD_RELOAD_TS") || "0", 10);
+    lines.push("רענון אוטומטי אחרון: " + (lastHard ? fmtTime(lastHard) : "לא היה"));
     lines.push("דפדפן: " + navigator.userAgent);
     lines.push("");
     var p = lastModel && lastModel.byPage[currentPage];
@@ -617,6 +644,7 @@
       .then(function (r) { return r.ok ? r.text() : ""; })
       .then(function (t) {
         var m = new RegExp("APP_VERSION" + "\\s*=\\s*\"([^\"]+)\"").exec(t);
+        if (m) { serverVersion = m[1]; updateDiag(); }
         if (m && m[1] !== APP_VERSION) {
           var prev = parseInt(lsGet("PEREZ_HARD_RELOAD_TS") || "0", 10);
           if (now - prev > 300000) { lsSet("PEREZ_HARD_RELOAD_TS", String(now)); hardReload(); }   // מגן מלולאות
