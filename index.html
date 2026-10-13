@@ -194,7 +194,7 @@
   "use strict";
 
   /* ================= הגדרות ================= */
-  var APP_VERSION  = "3.4";
+  var APP_VERSION  = "3.5";
   var SHEET_ID     = "1uNJ1JqjcHdCpi4YVe1gjIxBFPPfoNgCiel-_rh1YR7w";
   var DEFAULT_PAGE = "ראשי";                 // שורות ללא ערך בעמודה A שייכות לעמוד הזה
   var GVIZ_URL     = "https://docs.google.com/spreadsheets/d/" + SHEET_ID + "/gviz/tq?tqx=out:json";
@@ -276,6 +276,9 @@
     return c && c.v != null ? String(c.v).trim() : "";
   }
 
+  var parseStats = null;   // סטטיסטיקת הקריאה האחרונה (לאבחון)
+  var fetchMode = "";      // איזו כתובת שימשה בקריאה האחרונה (לאבחון)
+
   function parseGViz(text) {
     var start = text.indexOf("{"), end = text.lastIndexOf("}");
     if (start < 0 || end < 0) throw new Error("bad response");
@@ -283,8 +286,10 @@
     if (data.status === "error" || !data.table) throw new Error("sheet error");
 
     var items = [];
-    data.table.rows.forEach(function (r) {
+    var st = { total: 0, header: 0, hiddenE: 0, incomplete: 0, kept: 0, incompleteRows: [] };
+    data.table.rows.forEach(function (r, idx) {
       if (!r || !r.c) return;
+      st.total++;
       var page     = cell(r, 0);
       var category = cell(r, 1);
       var title    = cell(r, 2);
@@ -295,10 +300,15 @@
       var state    = stateRaw.toLowerCase();
 
       // שורת כותרת של הגיליון (אם gviz לא זיהה אותה)
-      if (page === "עמוד" || category === "קטגוריה" || title === "שם הקישור") return;
+      if (page === "עמוד" || category === "קטגוריה" || title === "שם הקישור") { st.header++; return; }
       // עמודה E: מציגים רק "כן" (או ריק). כל ערך אחר = לא להציג
-      if (!(active === "" || active === "כן" || active === "true" || active === "yes")) return;
-      if (!category || !title) return;
+      if (!(active === "" || active === "כן" || active === "true" || active === "yes")) { st.hiddenE++; return; }
+      if (!category || !title) {
+        st.incomplete++;
+        if (st.incompleteRows.length < 5) st.incompleteRows.push((page || "?") + " / " + (category || "(ללא קטגוריה)") + " / " + (title || "(ללא שם)"));
+        return;
+      }
+      st.kept++;
 
       items.push({
         page: page || DEFAULT_PAGE,
@@ -310,6 +320,7 @@
         open: (state === "פתוח" || state === "open")   // ברירת מחדל: סגור. רק "פתוח" פותח
       });
     });
+    parseStats = st;
     return items;
   }
 
@@ -485,23 +496,36 @@
 
   // 2) משיכה ברקע מה-Google Sheet
   var lastRefresh = 0;
+  function loadFrom(url) {
+    var ctrl = ("AbortController" in window) ? new AbortController() : null;
+    var timer = ctrl ? setTimeout(function () { ctrl.abort(); }, FETCH_TIMEOUT_MS) : null;
+    return fetch(url, ctrl ? { signal: ctrl.signal, cache: "no-store" } : { cache: "no-store" })
+      .then(function (res) { if (!res.ok) throw new Error("http " + res.status); return res.text(); })
+      .then(function (text) {
+        var fresh = parseGViz(text);
+        if (!fresh.length) throw new Error("empty");   // לא דורסים מטמון תקין בנתונים ריקים/שגויים
+        return fresh;
+      })
+      .then(function (v) { if (timer) clearTimeout(timer); return v; },
+            function (e) { if (timer) clearTimeout(timer); throw e; });
+  }
+
   function refresh(force) {
     var now = Date.now();
     if (!force && now - lastRefresh < REFRESH_THROTTLE_MS) return;
     lastRefresh = now;
 
-    var ctrl = ("AbortController" in window) ? new AbortController() : null;
-    var timer = ctrl ? setTimeout(function () { ctrl.abort(); }, FETCH_TIMEOUT_MS) : null;
-
-    fetch(GVIZ_URL, ctrl ? { signal: ctrl.signal, cache: "no-store" } : { cache: "no-store" })
-      .then(function (res) { if (!res.ok) throw new Error("http " + res.status); return res.text(); })
-      .then(function (text) {
-        var fresh = parseGViz(text);
-        if (!fresh.length) throw new Error("empty");   // לא דורסים מטמון תקין בנתונים ריקים/שגויים
+    // headers=0: כל השורות נקראות כנתונים. בלי זה Google מנחש כמה שורות הן "כותרות",
+    // ותא מספרי אחד בעמודת טקסט (למשל שם קישור "12") גורם לו לבלוע את כל השורות שמעליו.
+    fetchMode = "headers=0";
+    loadFrom(GVIZ_URL + "&headers=0")
+      .catch(function () { fetchMode = "רגילה (גיבוי)"; return loadFrom(GVIZ_URL); })
+      .then(function (fresh) {
         var ts = Date.now();
         lsSet(CACHE_KEY, JSON.stringify({ ts: ts, items: fresh }));
         applyData(fresh, ts);
         setStatus(true);
+        updateDiag();
       })
       .catch(function () {
         if (!hadCache && !items.length) {
@@ -509,8 +533,7 @@
         } else {
           setStatus(false);
         }
-      })
-      .then(function () { if (timer) clearTimeout(timer); });
+      });
   }
   refresh(true);
 
@@ -624,6 +647,15 @@
     lines.push("דפדפן: " + navigator.userAgent);
     lines.push("");
     var p = lastModel && lastModel.byPage[currentPage];
+    if (parseStats) {
+      lines.push("קריאה מהגיליון (" + fetchMode + "): נקראו " + parseStats.total + " שורות | מוצגות " + parseStats.kept +
+        " | הוסתרו לפי עמודה E: " + parseStats.hiddenE + " | חסר שם/קטגוריה: " + parseStats.incomplete + " | שורות כותרת: " + parseStats.header);
+      if (parseStats.incompleteRows.length) lines.push("   שורות שדולגו (חסר שם/קטגוריה): " + parseStats.incompleteRows.join("  ;  "));
+    } else {
+      lines.push("קריאה מהגיליון: עדיין לא בוצעה בטעינה הזו (מוצגים נתונים שמורים)");
+    }
+    var pg = []; items.forEach(function (it) { if (pg.indexOf(it.page) === -1) pg.push(it.page); });
+    lines.push("עמודים שנמצאו: " + (pg.join(" | ") || "—"));
     lines.push("צבע העמוד (עמודה G): " + (p && p.color ? p.color : "לא הוגדר – ברירת מחדל"));
     lines.push("עמוד: " + currentPage + " — מה נקרא מעמודה F לכל קטגוריה:");
     if (p) p.groups.forEach(function (g) {
