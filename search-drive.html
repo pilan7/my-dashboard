@@ -5,20 +5,45 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#173b5e">
 <title>חיפוש ב-Google Drive</title>
+<script>
+/* מצב תצוגה משותף עם הדשבורד (PEREZ_THEME): dark / light, או ללא ערך = אוטומטי לפי המכשיר */
+(function () { try { var t = localStorage.getItem("PEREZ_THEME"); if (t === "dark" || t === "light") document.documentElement.setAttribute("data-theme", t); } catch (e) {} })();
+</script>
 <style>
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; background: #f8fafc; padding: 25px 20px; direction: rtl; text-align: right; display: flex; justify-content: center; }
-  .box { background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px 24px; box-shadow: 0 4px 6px -1px rgba(0,0,0,.08); width: 100%; max-width: 580px; }
-  h2 { color: #173b5e; font-size: 1.15rem; margin-bottom: 16px; }
-  .row { display: flex; gap: 8px; margin-bottom: 14px; }
-  input[type="text"] { flex: 1; min-width: 0; padding: 10px 14px; font-size: 1rem; border: 1px solid #cbd5e1; border-radius: 6px; outline: none; }
-  input[type="text"]:focus { border-color: #173b5e; }
-  button { background: #173b5e; color: #fff; border: none; border-radius: 6px; padding: 10px 20px; font-size: .95rem; font-weight: 600; cursor: pointer; }
-  button:hover { background: #254670; }
-  .filters { display: flex; flex-wrap: wrap; gap: 16px; font-size: .86rem; color: #334155; align-items: center; }
-  select { padding: 6px 10px; border: 1px solid #cbd5e1; border-radius: 6px; background: #fff; outline: none; cursor: pointer; }
-  label { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; user-select: none; }
-  .offline { display: none; margin-top: 14px; font-size: .85rem; color: #92400e; background: #fef3c7; border-radius: 6px; padding: 8px 12px; }
+:root {
+  color-scheme: light;
+  --bg: #f8fafc; --surface: #ffffff; --border: #e2e8f0; --input-border: #cbd5e1; --input-text: #1e293b;
+  --title: #173b5e; --text: #334155; --btn: #173b5e; --btn-hover: #254670; --focus: #173b5e;
+  --warn-text: #92400e; --warn-bg: #fef3c7; --shadow: rgba(0,0,0,.08);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --bg: #0e1822; --surface: #15222e; --border: #263747; --input-border: #34495c; --input-text: #e3e9ef;
+    --title: #8cbcea; --text: #c3cfdb; --btn: #1f4c78; --btn-hover: #275d91; --focus: #8cbcea;
+    --warn-text: #f0a54a; --warn-bg: #2a2214; --shadow: rgba(0,0,0,.4);
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #0e1822; --surface: #15222e; --border: #263747; --input-border: #34495c; --input-text: #e3e9ef;
+  --title: #8cbcea; --text: #c3cfdb; --btn: #1f4c78; --btn-hover: #275d91; --focus: #8cbcea;
+  --warn-text: #f0a54a; --warn-bg: #2a2214; --shadow: rgba(0,0,0,.4);
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html { background: var(--bg); }
+body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; background: var(--bg); padding: 25px 20px; direction: rtl; text-align: right; display: flex; justify-content: center; }
+.box { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 20px 24px; box-shadow: 0 4px 6px -1px var(--shadow); width: 100%; max-width: 580px; }
+h2 { color: var(--title); font-size: 1.15rem; margin-bottom: 16px; }
+.row { display: flex; gap: 8px; margin-bottom: 14px; }
+input[type="text"] { flex: 1; min-width: 0; padding: 10px 14px; font-size: 1rem; border: 1px solid var(--input-border); border-radius: 6px; outline: none; background: var(--surface); color: var(--input-text); }
+input[type="text"]:focus { border-color: var(--focus); }
+button { background: var(--btn); color: #fff; border: none; border-radius: 6px; padding: 10px 20px; font-size: .95rem; font-weight: 600; cursor: pointer; }
+button:hover { background: var(--btn-hover); }
+.filters { display: flex; flex-wrap: wrap; gap: 16px; font-size: .86rem; color: var(--text); align-items: center; }
+select { padding: 6px 10px; border: 1px solid var(--input-border); border-radius: 6px; background: var(--surface); color: var(--input-text); outline: none; cursor: pointer; }
+label { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; user-select: none; }
+.offline { display: none; margin-top: 14px; font-size: .85rem; color: var(--warn-text); background: var(--warn-bg); border-radius: 6px; padding: 8px 12px; }
 </style>
 </head>
 <body>
