@@ -231,7 +231,7 @@ white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   "use strict";
 
   /* ================= הגדרות ================= */
-  var APP_VERSION = "3.8";
+  var APP_VERSION = "3.9";
   var SHEET_ID     = "1uNJ1JqjcHdCpi4YVe1gjIxBFPPfoNgCiel-_rh1YR7w";
   var DEFAULT_PAGE = "ראשי";                 // שורות ללא ערך בעמודה A שייכות לעמוד הזה
   var GVIZ_URL     = "https://docs.google.com/spreadsheets/d/" + SHEET_ID + "/gviz/tq?tqx=out:json";
@@ -257,7 +257,7 @@ var MODE_KEY = "PEREZ_THEME"; // מצב תצוגה: dark / light, או ללא ע
     u = (u || "").trim();
     if (!u) return "";
     if (/^[a-z][a-z0-9+.\-]*:/i.test(u)) {
-      return /^(https?:|mailto:|tel:)/i.test(u) ? u : "";   // חוסם javascript: וכו'
+      return /^(https?:|mailto:|tel:|search-ms:)/i.test(u) ? u : "";   // חוסם javascript: וכו'; search-ms: פותח תיקייה בסייר Windows
     }
     return "https://" + u;
   }
