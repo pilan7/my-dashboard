@@ -101,6 +101,35 @@ border-radius: 6px 6px 0 0;
 }
 .nav a:hover { background: var(--hover); }
 .nav a[aria-current="page"] { color: var(--navy-text); font-weight: 700; border-bottom-color: var(--navy-text); }
+/* ---------- תפריט עמודים בטלפון (4.1) ---------- */
+.menu-btn {
+  display: none; flex: 0 1 auto; align-items: center; gap: 6px; min-width: 0; max-width: 60vw; margin-inline-end: auto;
+  height: 38px; padding: 0 12px 0 10px; border: 1px solid var(--chip-border); border-radius: 999px;
+  background: transparent; color: var(--navy-text); font: inherit; font-size: .95rem; font-weight: 700; cursor: pointer;
+}
+.menu-btn:hover { background: var(--hover); }
+.menu-btn svg { width: 20px; height: 20px; flex: none; }
+.menu-btn .cur { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.drawer-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,.4); z-index: 40; opacity: 0; pointer-events: none; transition: opacity .2s ease; }
+.drawer {
+  position: fixed; top: 0; bottom: 0; right: 0; width: min(290px, 84vw); z-index: 41;
+  background: var(--surface); box-shadow: -4px 0 18px rgba(0,0,0,.2);
+  transform: translateX(105%); transition: transform .22s ease; visibility: hidden;
+  display: flex; flex-direction: column; padding-top: env(safe-area-inset-top, 0px);
+}
+.drawer-head { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; border-bottom: 1px solid var(--card-border); font-weight: 700; color: var(--navy-text); }
+.drawer-close { border: none; background: transparent; color: var(--muted); font-size: 1.6rem; line-height: 1; cursor: pointer; padding: 2px 8px; }
+.drawer-list { overflow-y: auto; padding: 8px; display: flex; flex-direction: column; gap: 2px; }
+.drawer-list a { display: block; padding: 13px 14px; border-radius: 8px; color: var(--text); text-decoration: none; font-size: 1.02rem; border-inline-start: 4px solid transparent; }
+.drawer-list a:hover { background: var(--hover); }
+.drawer-list a[aria-current="page"] { background: var(--hover-2); color: var(--navy-text); font-weight: 700; border-inline-start-color: var(--navy-text); }
+body.drawer-open { overflow: hidden; }
+body.drawer-open .drawer { transform: none; visibility: visible; }
+body.drawer-open .drawer-backdrop { opacity: 1; pointer-events: auto; }
+@media (max-width: 640px) {
+  .nav { display: none; }
+  .menu-btn { display: inline-flex; }
+}
 .status { font-size: .72rem; color: var(--muted); white-space: nowrap; flex: none; }
 .status.offline { color: var(--warn); }
 .icon-btn {
@@ -207,6 +236,10 @@ white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   <div class="topbar-inner">
     <img class="logo" src="data:image/png;base64,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" alt="Perez" width="42" height="36">
     <nav class="nav" id="nav" aria-label="עמודים"></nav>
+    <button class="menu-btn" id="menuBtn" type="button" aria-label="תפריט עמודים" aria-expanded="false" aria-controls="drawer">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="18" x2="20" y2="18"/></svg>
+      <span class="cur" id="menuCur"></span>
+    </button>
     <span class="status" id="status" aria-live="polite"></span>
     <button class="auth-btn" id="authBtn" type="button" title="חידוש ההרשאה לקריאת הגיליון">🔑 רענן מ-Google</button>
     <button class="icon-btn" id="modeBtn" type="button" aria-label="מצב תצוגה: אוטומטי" title="מצב תצוגה: אוטומטי"></button>
@@ -223,6 +256,11 @@ white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   </div>
 </header>
 
+<div class="drawer-backdrop" id="drawerBackdrop"></div>
+<aside class="drawer" id="drawer" aria-label="עמודים">
+  <div class="drawer-head"><span>עמודים</span><button class="drawer-close" id="drawerClose" type="button" aria-label="סגירת התפריט">×</button></div>
+  <nav class="drawer-list" id="drawerList"></nav>
+</aside>
 <main>
   <div id="quick-bar" class="quick-bar"></div>
   <div id="dashboard" class="columns-wrapper">
@@ -234,7 +272,6 @@ white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   <span id="verText"></span>
   <button type="button" id="diagBtn">אבחון</button>
   <button type="button" id="hardBtn">רענון מלא</button>
-  <button type="button" id="signOutBtn">ניתוק מ-Google</button>
 </footer>
 <pre class="diag" id="diag" hidden></pre>
 
@@ -243,7 +280,7 @@ white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   "use strict";
 
   /* ================= הגדרות ================= */
-  var APP_VERSION = "4.0";
+  var APP_VERSION = "4.1";
   var TEST_MODE = false;  // true = סביבת בדיקה (test.html): בלי Service Worker ובלי בדיקת גרסה אוטומטית
   var SHEET_ID     = "1uNJ1JqjcHdCpi4YVe1gjIxBFPPfoNgCiel-_rh1YR7w";
   var DEFAULT_PAGE = "ראשי";                 // שורות ללא ערך בעמודה A שייכות לעמוד הזה
@@ -452,7 +489,40 @@ applyMode(getMode());
       nav.appendChild(a);
     });
     var active = nav.querySelector('[aria-current="page"]');
-    if (active && active.scrollIntoView) { try { active.scrollIntoView({ inline: "nearest", block: "nearest" }); } catch (e) {} }
+    if (active && active.scrollIntoView && nav.offsetParent) { try { active.scrollIntoView({ inline: "nearest", block: "nearest" }); } catch (e) {} }
+
+    // תפריט אנכי לטלפון (4.1)
+    var list = $("drawerList");
+    list.textContent = "";
+    model.pages.forEach(function (name) {
+      var a = el("a", "", name);
+      a.href = "#" + encodeURIComponent(name);
+      if (name === currentPage) a.setAttribute("aria-current", "page");
+      a.addEventListener("click", closeDrawer);
+      list.appendChild(a);
+    });
+    $("menuCur").textContent = currentPage;
+  }
+
+  function openDrawer() {
+    document.body.classList.add("drawer-open");
+    $("menuBtn").setAttribute("aria-expanded", "true");
+    var cur = $("drawerList").querySelector('[aria-current="page"]') || $("drawerClose");
+    setTimeout(function () { try { cur.focus(); } catch (e) {} }, 50);
+  }
+  function closeDrawer() {
+    if (!document.body.classList.contains("drawer-open")) return;
+    document.body.classList.remove("drawer-open");
+    $("menuBtn").setAttribute("aria-expanded", "false");
+  }
+  $("menuBtn").addEventListener("click", openDrawer);
+  $("drawerClose").addEventListener("click", closeDrawer);
+  $("drawerBackdrop").addEventListener("click", closeDrawer);
+  document.addEventListener("keydown", function (e) { if (e.key === "Escape") closeDrawer(); });
+  if (window.matchMedia) {
+    var wideQuery = window.matchMedia("(min-width: 641px)");
+    var onWide = function () { if (wideQuery.matches) closeDrawer(); };
+    if (wideQuery.addEventListener) wideQuery.addEventListener("change", onWide); else if (wideQuery.addListener) wideQuery.addListener(onWide);
   }
 
   function renderQuick(chips) {
@@ -648,14 +718,6 @@ applyMode(getMode());
     c.requestAccessToken({ prompt: "" });   // אם כבר אישרת בעבר – החלון נסגר לבד
   }
   $("authBtn").addEventListener("click", signIn);
-  $("signOutBtn").addEventListener("click", function () {
-    var t = getToken();
-    clearToken();
-    if (t && window.google && google.accounts && google.accounts.oauth2) { try { google.accounts.oauth2.revoke(t, function () {}); } catch (e) {} }
-    authInfo = "נותק ידנית";
-    showAuth();
-    updateDiag();
-  });
 
   function loadFrom(url, token) {
     var ctrl = ("AbortController" in window) ? new AbortController() : null;
