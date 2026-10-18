@@ -8,6 +8,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Perez">
 <title>דשבורד פרז</title>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
 <link rel="manifest" href="manifest.webmanifest">
 <script>
 /* מצב תצוגה שנבחר ידנית – מוחל לפני הציור הראשון כדי למנוע הבהוב */
@@ -189,6 +190,15 @@ white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 .status { display: none; }
 .topbar-inner { gap: 8px; padding: 6px 10px; }
 }
+/* ---------- התחברות Google (4.0) ---------- */
+.auth-btn {
+  flex: none; display: none; align-items: center; gap: 6px;
+  background: var(--navy); color: var(--on-navy); border: none; cursor: pointer;
+  font: inherit; font-size: .82rem; font-weight: 600; padding: 7px 12px; border-radius: 999px; white-space: nowrap;
+}
+.auth-btn.show { display: inline-flex; }
+.auth-btn:hover { background: var(--navy-hover); }
+.auth-btn[disabled] { opacity: .6; cursor: default; }
 </style>
 </head>
 <body>
@@ -198,6 +208,7 @@ white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
     <img class="logo" src="data:image/png;base64,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" alt="Perez" width="42" height="36">
     <nav class="nav" id="nav" aria-label="עמודים"></nav>
     <span class="status" id="status" aria-live="polite"></span>
+    <button class="auth-btn" id="authBtn" type="button" title="חידוש ההרשאה לקריאת הגיליון">🔑 רענן מ-Google</button>
     <button class="icon-btn" id="modeBtn" type="button" aria-label="מצב תצוגה: אוטומטי" title="מצב תצוגה: אוטומטי"></button>
 <button class="icon-btn" id="searchBtn" type="button" aria-label="חיפוש בתוכן הדשבורד" aria-expanded="false" aria-controls="searchPanel">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
@@ -223,6 +234,7 @@ white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   <span id="verText"></span>
   <button type="button" id="diagBtn">אבחון</button>
   <button type="button" id="hardBtn">רענון מלא</button>
+  <button type="button" id="signOutBtn">ניתוק מ-Google</button>
 </footer>
 <pre class="diag" id="diag" hidden></pre>
 
@@ -231,10 +243,15 @@ white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   "use strict";
 
   /* ================= הגדרות ================= */
-  var APP_VERSION = "3.9";
+  var APP_VERSION = "4.0";
+  var TEST_MODE = false;  // true = סביבת בדיקה (test.html): בלי Service Worker ובלי בדיקת גרסה אוטומטית
   var SHEET_ID     = "1uNJ1JqjcHdCpi4YVe1gjIxBFPPfoNgCiel-_rh1YR7w";
   var DEFAULT_PAGE = "ראשי";                 // שורות ללא ערך בעמודה A שייכות לעמוד הזה
-  var GVIZ_URL     = "https://docs.google.com/spreadsheets/d/" + SHEET_ID + "/gviz/tq?tqx=out:json";
+  // 4.0: קריאה דרך Google Sheets API עם הרשאת המשתמש (הגיליון יכול להיות פרטי)
+  var CLIENT_ID    = "171942488002-3r3e9fceq8tqpdd6o9tir65kdcnv9j9p.apps.googleusercontent.com";
+  var SCOPE        = "https://www.googleapis.com/auth/spreadsheets.readonly";
+  var API_URL      = "https://sheets.googleapis.com/v4/spreadsheets/" + SHEET_ID + "/values/A:G?majorDimension=ROWS";   // A:G = הגיליון הראשון
+  var TOKEN_KEY    = "PEREZ_GTOKEN";   // הרשאה זמנית (כשעה) – נשמרת רק במכשיר
   var CACHE_KEY    = "PEREZ_DASHBOARD_DATA_V4";
   var OLD_PAGE_KEY = "PEREZ_DASHBOARD_LAST_PAGE"; // לא בשימוש מאז 3.7 (נמחק בטעינה)
 var MODE_KEY = "PEREZ_THEME"; // מצב תצוגה: dark / light, או ללא ערך = אוטומטי
@@ -354,23 +371,19 @@ applyMode(getMode());
 
 /* ================= פענוח הגיליון ================= */
   function cell(r, i) {
-    var c = r.c && r.c[i];
-    return c && c.v != null ? String(c.v).trim() : "";
+    var v = r[i];
+    return v != null ? String(v).trim() : "";
   }
 
   var parseStats = null;   // סטטיסטיקת הקריאה האחרונה (לאבחון)
   var fetchMode = "";      // איזו כתובת שימשה בקריאה האחרונה (לאבחון)
 
-  function parseGViz(text) {
-    var start = text.indexOf("{"), end = text.lastIndexOf("}");
-    if (start < 0 || end < 0) throw new Error("bad response");
-    var data = JSON.parse(text.substring(start, end + 1));
-    if (data.status === "error" || !data.table) throw new Error("sheet error");
-
+  function parseValues(data) {
+    if (!data || !data.values) throw new Error("bad response");
     var items = [];
     var st = { total: 0, header: 0, hiddenE: 0, incomplete: 0, kept: 0, incompleteRows: [] };
-    data.table.rows.forEach(function (r, idx) {
-      if (!r || !r.c) return;
+    data.values.forEach(function (r, idx) {
+      if (!r || !r.length) return;   // שורה ריקה לגמרי
       st.total++;
       var page     = cell(r, 0);
       var category = cell(r, 1);
@@ -522,7 +535,7 @@ applyMode(getMode());
       p.groups.forEach(function (g) { frag.appendChild(createCard(currentPage, g)); });
       container.appendChild(frag);
     }
-    document.title = currentPage + " · דשבורד פרז";
+    document.title = (TEST_MODE ? "[בדיקה] " : "") + currentPage + " · דשבורד פרז";
     lastModel = model;
     updateDiag();
   }
@@ -577,13 +590,87 @@ applyMode(getMode());
 
   // 2) משיכה ברקע מה-Google Sheet
   var lastRefresh = 0;
-  function loadFrom(url) {
+  /* ---------- הרשאת Google ---------- */
+  var authInfo = "";   // לאבחון
+  function getToken() {
+    try {
+      var o = JSON.parse(lsGet(TOKEN_KEY) || "null");
+      if (o && o.t && o.exp > Date.now() + 60000) return o.t;
+    } catch (e) {}
+    return "";
+  }
+  function saveToken(t, sec) { lsSet(TOKEN_KEY, JSON.stringify({ t: t, exp: Date.now() + (parseInt(sec, 10) || 3600) * 1000 })); }
+  function clearToken() { try { localStorage.removeItem(TOKEN_KEY); } catch (e) {} }
+  function tokenLeft() {
+    try { var o = JSON.parse(lsGet(TOKEN_KEY) || "null"); return o && o.exp ? Math.round((o.exp - Date.now()) / 60000) : 0; } catch (e) { return 0; }
+  }
+
+  function showAuth(text) {
+    var b = $("authBtn");
+    b.disabled = false;
+    b.textContent = text || "🔑 רענן מ-Google";
+    b.classList.add("show");
+  }
+  function hideAuth() { $("authBtn").classList.remove("show"); }
+
+  var tokenClient = null;
+  function getTokenClient() {
+    if (tokenClient) return tokenClient;
+    if (!(window.google && google.accounts && google.accounts.oauth2)) return null;
+    tokenClient = google.accounts.oauth2.initTokenClient({
+      client_id: CLIENT_ID,
+      scope: SCOPE,
+      callback: function (resp) {
+        if (resp && resp.access_token) {
+          saveToken(resp.access_token, resp.expires_in);
+          authInfo = "התחברות הצליחה";
+          hideAuth();
+          refresh(true);
+        } else {
+          authInfo = "התחברות נכשלה: " + (resp && (resp.error_description || resp.error) || "לא ידוע");
+          showAuth("🔑 נסה שוב");
+        }
+        updateDiag();
+      },
+      error_callback: function (err) {   // חלון נסגר / נחסם
+        authInfo = "חלון ההתחברות: " + (err && err.type || "שגיאה");
+        showAuth("🔑 נסה שוב");
+        updateDiag();
+      }
+    });
+    return tokenClient;
+  }
+  function signIn() {
+    var c = getTokenClient();
+    if (!c) { authInfo = "רכיב ההתחברות של Google עוד לא נטען"; showAuth("🔑 נסה שוב בעוד רגע"); updateDiag(); return; }
+    $("authBtn").disabled = true;
+    $("authBtn").textContent = "מתחבר...";
+    c.requestAccessToken({ prompt: "" });   // אם כבר אישרת בעבר – החלון נסגר לבד
+  }
+  $("authBtn").addEventListener("click", signIn);
+  $("signOutBtn").addEventListener("click", function () {
+    var t = getToken();
+    clearToken();
+    if (t && window.google && google.accounts && google.accounts.oauth2) { try { google.accounts.oauth2.revoke(t, function () {}); } catch (e) {} }
+    authInfo = "נותק ידנית";
+    showAuth();
+    updateDiag();
+  });
+
+  function loadFrom(url, token) {
     var ctrl = ("AbortController" in window) ? new AbortController() : null;
     var timer = ctrl ? setTimeout(function () { ctrl.abort(); }, FETCH_TIMEOUT_MS) : null;
-    return fetch(url, ctrl ? { signal: ctrl.signal, cache: "no-store" } : { cache: "no-store" })
-      .then(function (res) { if (!res.ok) throw new Error("http " + res.status); return res.text(); })
-      .then(function (text) {
-        var fresh = parseGViz(text);
+    var opts = { cache: "no-store", headers: { "Authorization": "Bearer " + token } };
+    if (ctrl) opts.signal = ctrl.signal;
+    return fetch(url, opts)
+      .then(function (res) {
+        if (res.status === 401) { var e1 = new Error("auth"); e1.auth = true; throw e1; }
+        if (res.status === 403) { var e2 = new Error("forbidden"); e2.forbidden = true; throw e2; }
+        if (!res.ok) throw new Error("http " + res.status);
+        return res.json();
+      })
+      .then(function (json) {
+        var fresh = parseValues(json);
         if (!fresh.length) throw new Error("empty");   // לא דורסים מטמון תקין בנתונים ריקים/שגויים
         return fresh;
       })
@@ -596,19 +683,26 @@ applyMode(getMode());
     if (!force && now - lastRefresh < REFRESH_THROTTLE_MS) return;
     lastRefresh = now;
 
-    // headers=0: כל השורות נקראות כנתונים. בלי זה Google מנחש כמה שורות הן "כותרות",
-    // ותא מספרי אחד בעמודת טקסט (למשל שם קישור "12") גורם לו לבלוע את כל השורות שמעליו.
-    fetchMode = "headers=0";
-    loadFrom(GVIZ_URL + "&headers=0")
-      .catch(function () { fetchMode = "רגילה (גיבוי)"; return loadFrom(GVIZ_URL); })
+    var token = getToken();
+    if (!token) {   // אין הרשאה בתוקף: מציגים את העותק השמור + כפתור
+      showAuth();
+      if (!hadCache && !items.length) showMessage("כדי לטעון את הקישורים, לחץ על \"🔑 רענן מ-Google\" למעלה.");
+      updateDiag();
+      return;
+    }
+    fetchMode = "Sheets API";
+    loadFrom(API_URL, token)
       .then(function (fresh) {
+        hideAuth();
         var ts = Date.now();
         lsSet(CACHE_KEY, JSON.stringify({ ts: ts, items: fresh }));
         applyData(fresh, ts);
         setStatus(true);
         updateDiag();
       })
-      .catch(function () {
+      .catch(function (err) {
+        if (err && err.auth) { clearToken(); authInfo = "ההרשאה פגה"; showAuth(); updateDiag(); if (!hadCache && !items.length) showMessage("ההרשאה פגה. לחץ על \"🔑 רענן מ-Google\" למעלה."); return; }
+        if (err && err.forbidden) { authInfo = "403: לחשבון שהתחברת איתו אין גישה לגיליון"; showAuth("🔑 התחבר בחשבון אחר"); updateDiag(); if (!hadCache && !items.length) showMessage("לחשבון שהתחברת איתו אין גישה לגיליון."); return; }
         if (!hadCache && !items.length) {
           showMessage(navigator.onLine ? "שגיאה בטעינת הנתונים." : "אין חיבור לאינטרנט ועדיין אין נתונים שמורים. התחבר פעם אחת כדי לשמור אותם.");
         } else {
@@ -693,7 +787,7 @@ applyMode(getMode());
     function go() {
       if (went) return; went = true;
       // כתובת ייחודית עוקפת גם את המטמון הרגיל של הדפדפן, לא רק את ה-Service Worker
-      location.replace(location.pathname + "?r=" + Date.now() + location.hash);
+      location.replace(location.pathname + "?" + (TEST_MODE ? "sw-bypass=1&" : "") + "r=" + Date.now() + location.hash);
     }
     var jobs = [];
     if (window.caches) jobs.push(caches.keys().then(function (ks) { return Promise.all(ks.map(function (k) { return caches.delete(k); })); }));
@@ -705,7 +799,7 @@ applyMode(getMode());
   // אחרי רענון מלא: מנקים את הפרמטר מהכתובת ומציגים אישור
   (function () {
     if (/[?&]r=\d+/.test(location.search)) {
-      try { history.replaceState(null, "", location.pathname + location.hash); } catch (e) {}
+      try { history.replaceState(null, "", location.pathname + (TEST_MODE ? "?sw-bypass=1" : "") + location.hash); } catch (e) {}
     }
     var done = false;
     try { done = sessionStorage.getItem("PEREZ_JUST_REFRESHED") === "1"; sessionStorage.removeItem("PEREZ_JUST_REFRESHED"); } catch (e) {}
@@ -721,6 +815,7 @@ lines.push("מצב תצוגה: " + MODE_NAMES[getMode()] + (isDark() ? " (מוצ
     lines.push("Service Worker שולט בדף: " + (navigator.serviceWorker && navigator.serviceWorker.controller ? "כן" : "לא"));
     lines.push("רוחב מסך: " + window.innerWidth + " | אונליין: " + navigator.onLine);
     lines.push("עדכון נתונים אחרון: " + (lastSync ? fmtTime(lastSync) : "אין"));
+    lines.push("הרשאת Google: " + (getToken() ? "בתוקף עוד כ-" + tokenLeft() + " דקות" : "אין / פגה") + (authInfo ? " | " + authInfo : ""));
     lines.push("כתובת: " + location.href);
     lines.push("גרסה שהשרת החזיר בבדיקה האחרונה: " + (serverVersion || "עוד לא נבדק / אין רשת"));
     lines.push("Service Worker: " + (navigator.serviceWorker && navigator.serviceWorker.controller ? navigator.serviceWorker.controller.scriptURL : "—"));
@@ -766,11 +861,13 @@ lines.push("מצב תצוגה: " + MODE_NAMES[getMode()] + (isDark() ? " (מוצ
       })
       .catch(noop);
   }
-  setTimeout(checkVersion, 1500);
-  document.addEventListener("visibilitychange", function () { if (!document.hidden) checkVersion(); });
+  if (!TEST_MODE) {
+    setTimeout(checkVersion, 1500);
+    document.addEventListener("visibilitychange", function () { if (!document.hidden) checkVersion(); });
+  }
 
   /* ================= PWA: Service Worker ================= */
-  if ("serviceWorker" in navigator) {
+  if (!TEST_MODE && "serviceWorker" in navigator) {
     var hadController = !!navigator.serviceWorker.controller;
     var reloading = false;
     function reloadOnce() {
