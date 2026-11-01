@@ -219,15 +219,14 @@ white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 .status { display: none; }
 .topbar-inner { gap: 8px; padding: 6px 10px; }
 }
-/* ---------- התחברות Google (4.0) ---------- */
-.auth-btn {
-  flex: none; display: none; align-items: center; gap: 6px;
-  background: var(--navy); color: var(--on-navy); border: none; cursor: pointer;
-  font: inherit; font-size: .82rem; font-weight: 600; padding: 7px 12px; border-radius: 999px; white-space: nowrap;
-}
-.auth-btn.show { display: inline-flex; }
-.auth-btn:hover { background: var(--navy-hover); }
-.auth-btn[disabled] { opacity: .6; cursor: default; }
+/* ---------- כפתור עדכון מ-Google בתחתית (4.2) ---------- */
+.auth-wrap { display: none; align-items: center; gap: 8px; flex-wrap: nowrap; }
+.auth-wrap.show { display: inline-flex; }
+.app-footer .auth-btn { background: var(--navy); color: var(--on-navy); border-color: var(--navy); font-weight: 600; white-space: nowrap; }
+.app-footer .auth-btn:hover { background: var(--navy-hover); }
+.app-footer .auth-btn[disabled] { opacity: .6; cursor: default; }
+.auth-reason { color: var(--warn); }
+.auth-reason:empty { display: none; }
 </style>
 </head>
 <body>
@@ -241,7 +240,6 @@ white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
       <span class="cur" id="menuCur"></span>
     </button>
     <span class="status" id="status" aria-live="polite"></span>
-    <button class="auth-btn" id="authBtn" type="button" title="חידוש ההרשאה לקריאת הגיליון">🔑 רענן מ-Google</button>
     <button class="icon-btn" id="modeBtn" type="button" aria-label="מצב תצוגה: אוטומטי" title="מצב תצוגה: אוטומטי"></button>
 <button class="icon-btn" id="searchBtn" type="button" aria-label="חיפוש בתוכן הדשבורד" aria-expanded="false" aria-controls="searchPanel">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
@@ -272,6 +270,7 @@ white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   <span id="verText"></span>
   <button type="button" id="diagBtn">אבחון</button>
   <button type="button" id="hardBtn">רענון מלא</button>
+  <span class="auth-wrap"><button type="button" class="auth-btn" id="authBtn" title="חידוש ההרשאה לקריאת הגיליון">🔑 עדכן</button><span class="auth-reason" id="authReason"></span></span>
 </footer>
 <pre class="diag" id="diag" hidden></pre>
 
@@ -280,7 +279,7 @@ white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   "use strict";
 
   /* ================= הגדרות ================= */
-  var APP_VERSION = "4.1";
+  var APP_VERSION = "4.2";
   var TEST_MODE = false;  // true = סביבת בדיקה (test.html): בלי Service Worker ובלי בדיקת גרסה אוטומטית
   var SHEET_ID     = "1uNJ1JqjcHdCpi4YVe1gjIxBFPPfoNgCiel-_rh1YR7w";
   var DEFAULT_PAGE = "ראשי";                 // שורות ללא ערך בעמודה A שייכות לעמוד הזה
@@ -675,13 +674,15 @@ applyMode(getMode());
     try { var o = JSON.parse(lsGet(TOKEN_KEY) || "null"); return o && o.exp ? Math.round((o.exp - Date.now()) / 60000) : 0; } catch (e) { return 0; }
   }
 
-  function showAuth(text) {
+  // reason: סיבת תקלה שמוצגת ליד הכפתור (ריק = ההרשאה פשוט פגה, מצב רגיל – בלי טקסט)
+  function showAuth(reason) {
     var b = $("authBtn");
     b.disabled = false;
-    b.textContent = text || "🔑 רענן מ-Google";
-    b.classList.add("show");
+    b.textContent = "🔑 עדכן";
+    $("authReason").textContent = reason || "";
+    b.parentNode.classList.add("show");
   }
-  function hideAuth() { $("authBtn").classList.remove("show"); }
+  function hideAuth() { $("authReason").textContent = ""; $("authBtn").parentNode.classList.remove("show"); }
 
   var tokenClient = null;
   function getTokenClient() {
@@ -698,13 +699,13 @@ applyMode(getMode());
           refresh(true);
         } else {
           authInfo = "התחברות נכשלה: " + (resp && (resp.error_description || resp.error) || "לא ידוע");
-          showAuth("🔑 נסה שוב");
+          showAuth("ההתחברות נכשלה");
         }
         updateDiag();
       },
       error_callback: function (err) {   // חלון נסגר / נחסם
         authInfo = "חלון ההתחברות: " + (err && err.type || "שגיאה");
-        showAuth("🔑 נסה שוב");
+        showAuth("חלון ההתחברות נסגר");
         updateDiag();
       }
     });
@@ -712,9 +713,10 @@ applyMode(getMode());
   }
   function signIn() {
     var c = getTokenClient();
-    if (!c) { authInfo = "רכיב ההתחברות של Google עוד לא נטען"; showAuth("🔑 נסה שוב בעוד רגע"); updateDiag(); return; }
+    if (!c) { authInfo = "רכיב ההתחברות של Google עוד לא נטען"; showAuth("רכיב Google עוד לא נטען, נסה שוב"); updateDiag(); return; }
     $("authBtn").disabled = true;
-    $("authBtn").textContent = "מתחבר...";
+    $("authBtn").textContent = "מתעדכן...";
+    $("authReason").textContent = "";
     c.requestAccessToken({ prompt: "" });   // אם כבר אישרת בעבר – החלון נסגר לבד
   }
   $("authBtn").addEventListener("click", signIn);
@@ -748,7 +750,7 @@ applyMode(getMode());
     var token = getToken();
     if (!token) {   // אין הרשאה בתוקף: מציגים את העותק השמור + כפתור
       showAuth();
-      if (!hadCache && !items.length) showMessage("כדי לטעון את הקישורים, לחץ על \"🔑 רענן מ-Google\" למעלה.");
+      if (!hadCache && !items.length) showMessage("כדי לטעון את הקישורים, לחץ על \"🔑 עדכן\" למטה.");
       updateDiag();
       return;
     }
@@ -763,8 +765,8 @@ applyMode(getMode());
         updateDiag();
       })
       .catch(function (err) {
-        if (err && err.auth) { clearToken(); authInfo = "ההרשאה פגה"; showAuth(); updateDiag(); if (!hadCache && !items.length) showMessage("ההרשאה פגה. לחץ על \"🔑 רענן מ-Google\" למעלה."); return; }
-        if (err && err.forbidden) { authInfo = "403: לחשבון שהתחברת איתו אין גישה לגיליון"; showAuth("🔑 התחבר בחשבון אחר"); updateDiag(); if (!hadCache && !items.length) showMessage("לחשבון שהתחברת איתו אין גישה לגיליון."); return; }
+        if (err && err.auth) { clearToken(); authInfo = "ההרשאה פגה"; showAuth(); updateDiag(); if (!hadCache && !items.length) showMessage("ההרשאה פגה. לחץ על \"🔑 עדכן\" למטה."); return; }
+        if (err && err.forbidden) { authInfo = "403: לחשבון שהתחברת איתו אין גישה לגיליון"; showAuth("לחשבון הזה אין גישה לגיליון"); updateDiag(); if (!hadCache && !items.length) showMessage("לחשבון שהתחברת איתו אין גישה לגיליון."); return; }
         if (!hadCache && !items.length) {
           showMessage(navigator.onLine ? "שגיאה בטעינת הנתונים." : "אין חיבור לאינטרנט ועדיין אין נתונים שמורים. התחבר פעם אחת כדי לשמור אותם.");
         } else {
