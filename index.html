@@ -279,7 +279,7 @@ white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   "use strict";
 
   /* ================= הגדרות ================= */
-  var APP_VERSION = "4.2";
+  var APP_VERSION = "4.3";
   var TEST_MODE = false;  // true = סביבת בדיקה (test.html): בלי Service Worker ובלי בדיקת גרסה אוטומטית
   var SHEET_ID     = "1uNJ1JqjcHdCpi4YVe1gjIxBFPPfoNgCiel-_rh1YR7w";
   var DEFAULT_PAGE = "ראשי";                 // שורות ללא ערך בעמודה A שייכות לעמוד הזה
@@ -867,7 +867,10 @@ applyMode(getMode());
     }
     var done = false;
     try { done = sessionStorage.getItem("PEREZ_JUST_REFRESHED") === "1"; sessionStorage.removeItem("PEREZ_JUST_REFRESHED"); } catch (e) {}
-    if (done) $("verText").textContent = "גרסה " + APP_VERSION + " · רענון מלא בוצע ✓";
+    if (done) {   // ההודעה מוצגת 15 שניות ואז נעלמת (4.3)
+      $("verText").textContent = "גרסה " + APP_VERSION + " · רענון מלא בוצע ✓";
+      setTimeout(function () { $("verText").textContent = "גרסה " + APP_VERSION; }, 15000);
+    }
   })();
 
   function updateDiag() {
