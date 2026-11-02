@@ -81,10 +81,26 @@ async function staleWhileRevalidate(event) {
   return fresh || new Response('Offline', { status: 503, headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
 }
 
+// 4.4: סמלי האתרים (favicons) נשמרים במטמון נפרד כדי שיופיעו גם באופליין
+const ICON_CACHE = 'perez-icons-v1';
+async function iconCacheFirst(req) {
+  const cache = await caches.open(ICON_CACHE);
+  const hit = await cache.match(req);
+  if (hit) return hit;
+  try {
+    const res = await fetch(req);
+    if (res && (res.ok || res.type === 'opaque')) await cache.put(req, res.clone());
+    return res;
+  } catch (e) {
+    return new Response('', { status: 404 }); // אופליין ולא נשמר – הדף יציג גלובוס
+  }
+}
+
 self.addEventListener('fetch', (event) => {
   const req = event.request;
   if (req.method !== 'GET') return;
   const url = new URL(req.url);
+  if (url.hostname === 'www.google.com' && url.pathname === '/s2/favicons') { event.respondWith(iconCacheFirst(req)); return; }
   if (url.origin !== self.location.origin) return; // בקשות ל-Google Sheets וכו' – ישירות לרשת
   if (url.searchParams.has('sw-bypass')) return;       // בדיקת גרסה מול השרת – תמיד ישירות לרשת
   event.respondWith(staleWhileRevalidate(event));
