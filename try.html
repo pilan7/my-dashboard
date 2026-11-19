@@ -28,6 +28,11 @@ body { display: flex; align-items: center; justify-content: center; background: 
     for (var i = 0; i < Math.max(a.length, b.length); i++) { var x = +a[i] || 0, y = +b[i] || 0; if (x !== y) return x < y ? -1 : 1; }
     return 0;
   }
+  // הגנה: אם הדף הזה נטען בכתובת של גרסה (מהמטמון, בלי רשת) – לא מפנים שוב, כדי שלא תיווצר לולאה
+  if (/\/v\/[^\/]+\/(index\.html)?$/.test(location.pathname)) {
+    document.getElementById("msg").textContent = "הגרסה הזו עוד לא שמורה במכשיר. פתח את הדשבורד פעם אחת עם חיבור לאינטרנט.";
+    return;
+  }
   var done = false;
   function go(m) {
     if (done) return; done = true;
