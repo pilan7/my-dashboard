@@ -232,6 +232,7 @@ white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 .app-footer .auth-btn:hover { background: var(--navy-hover); }
 .app-footer .auth-btn[disabled] { opacity: .6; cursor: default; }
 .auth-reason { color: var(--warn); }
+.app-footer .ico { vertical-align: -2px; }
 .auth-reason:empty { display: none; }
 </style>
 </head>
@@ -279,7 +280,8 @@ white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   <span class="auth-wrap"><button type="button" class="auth-btn" id="authBtn" title="ההרשאה ל-Google פגה. לחיצה תחדש אותה ותטען נתונים עדכניים מהגיליון">🔑 עדכן</button><span class="auth-reason" id="authReason"></span></span>
   <button type="button" class="auth-btn" id="createBtn" style="display:none" title="יצירת גיליון קישורים חדש ב-Drive שלך, עם הוראות וקישורים לדוגמה">✨ צור לי דשבורד</button>
   <button type="button" class="auth-btn" id="pickBtn" style="display:none" title="בחירת גיליון הקישורים מה-Drive שלך. האתר יקבל גישה רק לגיליון שתבחר">📂 בחר גיליון</button>
-  <button type="button" id="shareBtn" title="שליחת קישור ההתקנה של הדשבורד למישהו אחר (בטלפון: תפריט שיתוף, במחשב: העתקה ללוח)">📤 שתף</button>
+  <button type="button" id="editBtn" style="display:none" title="פתיחת גיליון הקישורים שלך לעריכה (בחלון חדש)">✏️ ערוך קישורים</button>
+  <button type="button" id="shareBtn" title="שליחת קישור ההתקנה של הדשבורד למישהו אחר (בטלפון: תפריט שיתוף, במחשב: העתקה ללוח)"><svg class="ico" viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path fill="currentColor" d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92s2.92-1.31 2.92-2.92-1.31-2.92-2.92-2.92z"/></svg> <span id="shareTxt">שתף</span></button>
 </footer>
 <pre class="diag" id="diag" hidden></pre>
 
@@ -288,7 +290,7 @@ white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   "use strict";
 
   /* ================= הגדרות ================= */
-  var APP_VERSION = "4.9";
+  var APP_VERSION = "4.9.1";
   var TEST_MODE = true;  // true = סביבת בדיקה (test.html): בלי Service Worker ובלי בדיקת גרסה אוטומטית
   // 4.7: מזהה הגיליון כבר לא קבוע בקוד – המשתמש בוחר את הגיליון פעם אחת (חלון בחירת קבצים של Google) והבחירה נשמרת במכשיר
   var SHEET_KEY    = "PEREZ_SHEET_ID";
@@ -865,7 +867,7 @@ function createCard(pageName, g) {
     ["ראשי", "כפתורים", "Gmail", "https://mail.google.com", "כן", "", "", "תיבת הדואר"],
     ["ראשי", "כפתורים", "יומן", "https://calendar.google.com", "כן", "", "", ""],
     ["ראשי", "כפתורים", "חיפוש ב-Drive", "https://drive.google.com", "כן", "", "", "כפתור שהשם שלו מכיל \"חיפוש\" פותח חלון חיפוש ב-Drive"],
-    ["ראשי", "שימושי", "מזג אוויר", "https://ims.gov.il/he/forecast_data", "כן", "פתוח", "", "תחזית השירות המטאורולוגי"],
+    ["ראשי", "שימושי", "מזג אוויר", "https://ims.gov.il/he", "כן", "פתוח", "", "תחזית השירות המטאורולוגי"],
     ["ראשי", "שימושי", "מפות", "https://maps.google.com", "כן", "", "", ""],
     ["ראשי", "שימושי", "תרגום", "https://translate.google.com", "כן", "", "", ""],
     ["ראשי", "שימושי", "דוגמה לכותרת משנה", "", "כן", "", "", "שורה בלי כתובת מוצגת ככותרת"],
@@ -887,9 +889,43 @@ function createCard(pageName, g) {
     "",
     "חשוב: לא לשנות את סדר העמודות ולא להעביר את לשונית \"קישורים\" ממקומה הראשון.",
     "מותר לשנות את שם הקובץ ולהעביר אותו לכל תיקייה ב-Drive – האתר ימשיך לעבוד.",
+    "עריכה בלי אינטרנט: בגיליון, קובץ ← \"הפוך לזמין במצב אופליין\" (הדשבורד עצמו עובד אופליין גם בלי זה).",
     "",
     "גרסת תבנית: " + TEMPLATE_VERSION
   ];
+  // 4.9.1: תבנית שמתוחזקת בגיליון "תבנית דשבורד" (משותף: כל מי שיש לו הקישור – צפייה). ריק = הדוגמאות שבקוד
+  var TEMPLATE_ID = "";
+  function parseCsv(text) {
+    var rows = [], row = [], f = "", q = false;
+    for (var i = 0; i < text.length; i++) {
+      var ch = text[i];
+      if (q) { if (ch === '"') { if (text[i + 1] === '"') { f += '"'; i++; } else q = false; } else f += ch; }
+      else if (ch === '"') q = true;
+      else if (ch === ",") { row.push(f); f = ""; }
+      else if (ch === "\n" || ch === "\r") { if (ch === "\r" && text[i + 1] === "\n") i++; row.push(f); rows.push(row); row = []; f = ""; }
+      else f += ch;
+    }
+    if (f !== "" || row.length) { row.push(f); rows.push(row); }
+    return rows;
+  }
+  function fetchTab(name, headers) {
+    var url = "https://docs.google.com/spreadsheets/d/" + TEMPLATE_ID + "/gviz/tq?tqx=out:csv&headers=" + headers + "&sheet=" + encodeURIComponent(name);
+    return fetch(url, { cache: "no-store" }).then(function (r) { if (!r.ok) throw new Error("template " + r.status); return r.text(); }).then(parseCsv);
+  }
+  // מחזיר { rows, guide } מהתבנית, או מהדוגמאות שבקוד אם אין תבנית / היא לא זמינה
+  function loadTemplate() {
+    var fallback = { rows: SAMPLE_ROWS, guide: GUIDE, src: "דוגמאות מובנות" };
+    if (!TEMPLATE_ID) return Promise.resolve(fallback);
+    return Promise.all([fetchTab("קישורים", 1), fetchTab("הוראות", 0).catch(function () { return null; })])
+      .then(function (res) {
+        var rows = res[0].slice(1).filter(function (r) { return r.some(function (c) { return c.trim(); }); })
+          .map(function (r) { var o = []; for (var i = 0; i < 8; i++) o.push((r[i] || "").trim()); return o; });
+        if (!rows.length) return fallback;
+        var guide = res[1] ? res[1].map(function (r) { return r[0] || ""; }) : GUIDE;
+        while (guide.length && !guide[guide.length - 1]) guide.pop();
+        return { rows: rows, guide: guide.length ? guide : GUIDE, src: "תבנית" };
+      }, function () { return fallback; });
+  }
   function tcell(v, extra) { var c = { userEnteredValue: { stringValue: v } }; if (extra) for (var k in extra) c[k] = extra[k]; return c; }
   function gapiPost(url, token, body) {
     return fetch(url, { method: "POST", headers: { "Authorization": "Bearer " + token, "Content-Type": "application/json" }, body: JSON.stringify(body) })
@@ -900,37 +936,12 @@ function createCard(pageName, g) {
     if (!token) { showAuth("התחבר קודם, ואז צור דשבורד"); return; }
     $("createBtn").disabled = true; $("createBtn").textContent = "יוצר...";
     showMessage("יוצר עבורך גיליון קישורים חדש ב-Drive...");
-    var header = HEADERS.map(function (h) { return tcell(h[0], { note: h[1], userEnteredFormat: { textFormat: { bold: true }, backgroundColor: { red: .9, green: .93, blue: .97 } } }); });
-    var rows = [{ values: header }].concat(SAMPLE_ROWS.map(function (r) { return { values: r.map(function (v) { return tcell(v); }) }; }));
-    var body = {
-      properties: { title: "דשבורד קישורים" },
-      sheets: [
-        { properties: { sheetId: 0, title: "קישורים", rightToLeft: true, gridProperties: { frozenRowCount: 1, rowCount: 300, columnCount: 8 } },
-          data: [{ startRow: 0, startColumn: 0, rowData: rows }] },
-        { properties: { sheetId: 1, title: "הוראות", rightToLeft: true, gridProperties: { rowCount: 30, columnCount: 1 } },
-          data: [{ startRow: 0, startColumn: 0, rowData: GUIDE.map(function (t, i) { return { values: [tcell(t, i === 0 ? { userEnteredFormat: { textFormat: { bold: true, fontSize: 14 } } } : null)] }; }) }] }
-      ]
-    };
-    var created;
-    gapiPost("https://sheets.googleapis.com/v4/spreadsheets", token, body)
-      .then(function (r) {
-        created = r;
-        function list(vals, strict) { return { condition: { type: "ONE_OF_LIST", values: vals.map(function (v) { return { userEnteredValue: v }; }) }, strict: strict, showCustomUi: true }; }
-        function range(col) { return { sheetId: 0, startRowIndex: 1, endRowIndex: 300, startColumnIndex: col, endColumnIndex: col + 1 }; }
-        var widths = [90, 130, 200, 280, 60, 90, 90, 260];
-        var reqs = [
-          { setDataValidation: { range: range(0), rule: list(["ראשי", "עבודה"], false) } },
-          { setDataValidation: { range: range(4), rule: list(["כן", "לא"], true) } },
-          { setDataValidation: { range: range(5), rule: list(["פתוח"], false) } },
-          { updateDimensionProperties: { range: { sheetId: 1, dimension: "COLUMNS", startIndex: 0, endIndex: 1 }, properties: { pixelSize: 700 }, fields: "pixelSize" } }
-        ];
-        widths.forEach(function (w, i) { reqs.push({ updateDimensionProperties: { range: { sheetId: 0, dimension: "COLUMNS", startIndex: i, endIndex: i + 1 }, properties: { pixelSize: w }, fields: "pixelSize" } }); });
-        return gapiPost("https://sheets.googleapis.com/v4/spreadsheets/" + r.spreadsheetId + ":batchUpdate", token, { requests: reqs })
-          .catch(function () { /* עיצוב בלבד – הגיליון כבר נוצר */ });
-      })
+    var tpl, created;
+    loadTemplate().then(function (t) { tpl = t; return buildSheet(token, t); })
+      .then(function (r) { created = r; return formatSheet(token, r.spreadsheetId, tpl.rows); })
       .then(function () {
         lsSet(SHEET_KEY, created.spreadsheetId);
-        authInfo = "נוצר גיליון חדש: דשבורד קישורים";
+        authInfo = "נוצר גיליון חדש (" + tpl.src + "): דשבורד קישורים";
         hidePick();
         $("authReason").textContent = "";
         refresh(true);
@@ -941,12 +952,49 @@ function createCard(pageName, g) {
       })
       .then(function () { $("createBtn").disabled = false; $("createBtn").textContent = "✨ צור לי דשבורד"; });
   }
+  function buildSheet(token, tpl) {
+    var header = HEADERS.map(function (h) { return tcell(h[0], { note: h[1], userEnteredFormat: { textFormat: { bold: true }, backgroundColor: { red: .9, green: .93, blue: .97 } } }); });
+    var rows = [{ values: header }].concat(tpl.rows.map(function (r) { return { values: r.map(function (v) { return tcell(v); }) }; }));
+    var body = {
+      properties: { title: "דשבורד קישורים" },
+      sheets: [
+        { properties: { sheetId: 0, title: "קישורים", rightToLeft: true, gridProperties: { frozenRowCount: 1, rowCount: Math.max(300, tpl.rows.length + 100), columnCount: 8 } },
+          data: [{ startRow: 0, startColumn: 0, rowData: rows }] },
+        { properties: { sheetId: 1, title: "הוראות", rightToLeft: true, gridProperties: { rowCount: Math.max(30, tpl.guide.length + 5), columnCount: 1 } },
+          data: [{ startRow: 0, startColumn: 0, rowData: tpl.guide.map(function (t, i) { return { values: [tcell(t, i === 0 ? { userEnteredFormat: { textFormat: { bold: true, fontSize: 14 } } } : null)] }; }) }] }
+      ]
+    };
+    return gapiPost("https://sheets.googleapis.com/v4/spreadsheets", token, body);
+  }
+  function formatSheet(token, sid, rows) {
+        var pages = ["ראשי"]; rows.forEach(function (r) { if (r[0] && pages.indexOf(r[0]) === -1) pages.push(r[0]); });
+        function list(vals, strict) { return { condition: { type: "ONE_OF_LIST", values: vals.map(function (v) { return { userEnteredValue: v }; }) }, strict: strict, showCustomUi: true }; }
+        function range(col) { return { sheetId: 0, startRowIndex: 1, endRowIndex: 300, startColumnIndex: col, endColumnIndex: col + 1 }; }
+        var widths = [90, 130, 200, 280, 60, 90, 90, 260];
+        var reqs = [
+          { setDataValidation: { range: range(0), rule: list(pages, false) } },
+          { setDataValidation: { range: range(4), rule: list(["כן", "לא"], true) } },
+          { setDataValidation: { range: range(5), rule: list(["פתוח"], false) } },
+          { updateDimensionProperties: { range: { sheetId: 1, dimension: "COLUMNS", startIndex: 0, endIndex: 1 }, properties: { pixelSize: 700 }, fields: "pixelSize" } }
+        ];
+        widths.forEach(function (w, i) { reqs.push({ updateDimensionProperties: { range: { sheetId: 0, dimension: "COLUMNS", startIndex: i, endIndex: i + 1 }, properties: { pixelSize: w }, fields: "pixelSize" } }); });
+        return gapiPost("https://sheets.googleapis.com/v4/spreadsheets/" + sid + ":batchUpdate", token, { requests: reqs })
+          .catch(function () { /* עיצוב בלבד – הגיליון כבר נוצר */ });
+  }
   $("createBtn").addEventListener("click", createSheet);
+
+  /* ===== 4.9.1: כפתור עריכת הגיליון – נבנה מהגיליון השמור של המשתמש ===== */
+  function syncEditBtn() { $("editBtn").style.display = getSheetId() ? "" : "none"; }
+  $("editBtn").addEventListener("click", function () {
+    var id = getSheetId();
+    if (id) window.open("https://docs.google.com/spreadsheets/d/" + encodeURIComponent(id) + "/edit", "_blank", "noopener");
+  });
+  syncEditBtn();
 
   /* ===== 4.9: שיתוף קישור ההתקנה ===== */
   var INSTALL_URL = "https://pilan7.github.io/my-dashboard/";
   var SHARE_TEXT = "דשבורד קישורים אישי – לחץ להתקנה:";
-  function flashShare(t) { var b = $("shareBtn"); b.textContent = t; setTimeout(function () { b.textContent = "📤 שתף"; }, 2000); }
+  function flashShare(t) { var b = $("shareTxt"); b.textContent = t; setTimeout(function () { b.textContent = "שתף"; }, 2000); }
   function copyText(t) {
     if (navigator.clipboard && navigator.clipboard.writeText) return navigator.clipboard.writeText(t);
     return new Promise(function (ok, fail) {
@@ -1031,6 +1079,7 @@ function createCard(pageName, g) {
       .then(function (fresh) {
         hideAuth();
         hidePick();
+        syncEditBtn();
         var ts = Date.now();
         lsSet(CACHE_KEY, JSON.stringify({ ts: ts, items: fresh }));
         applyData(fresh, ts);
