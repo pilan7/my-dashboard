@@ -890,7 +890,7 @@ function createCard(pageName, g) {
     "",
     "גרסת תבנית: " + TEMPLATE_VERSION
   ];
-  function cell(v, extra) { var c = { userEnteredValue: { stringValue: v } }; if (extra) for (var k in extra) c[k] = extra[k]; return c; }
+  function tcell(v, extra) { var c = { userEnteredValue: { stringValue: v } }; if (extra) for (var k in extra) c[k] = extra[k]; return c; }
   function gapiPost(url, token, body) {
     return fetch(url, { method: "POST", headers: { "Authorization": "Bearer " + token, "Content-Type": "application/json" }, body: JSON.stringify(body) })
       .then(function (res) { if (!res.ok) return res.text().then(function (t) { throw new Error(res.status + " " + t.slice(0, 120)); }); return res.json(); });
@@ -900,15 +900,15 @@ function createCard(pageName, g) {
     if (!token) { showAuth("התחבר קודם, ואז צור דשבורד"); return; }
     $("createBtn").disabled = true; $("createBtn").textContent = "יוצר...";
     showMessage("יוצר עבורך גיליון קישורים חדש ב-Drive...");
-    var header = HEADERS.map(function (h) { return cell(h[0], { note: h[1], userEnteredFormat: { textFormat: { bold: true }, backgroundColor: { red: .9, green: .93, blue: .97 } } }); });
-    var rows = [{ values: header }].concat(SAMPLE_ROWS.map(function (r) { return { values: r.map(function (v) { return cell(v); }) }; }));
+    var header = HEADERS.map(function (h) { return tcell(h[0], { note: h[1], userEnteredFormat: { textFormat: { bold: true }, backgroundColor: { red: .9, green: .93, blue: .97 } } }); });
+    var rows = [{ values: header }].concat(SAMPLE_ROWS.map(function (r) { return { values: r.map(function (v) { return tcell(v); }) }; }));
     var body = {
       properties: { title: "דשבורד קישורים" },
       sheets: [
         { properties: { sheetId: 0, title: "קישורים", rightToLeft: true, gridProperties: { frozenRowCount: 1, rowCount: 300, columnCount: 8 } },
           data: [{ startRow: 0, startColumn: 0, rowData: rows }] },
         { properties: { sheetId: 1, title: "הוראות", rightToLeft: true, gridProperties: { rowCount: 30, columnCount: 1 } },
-          data: [{ startRow: 0, startColumn: 0, rowData: GUIDE.map(function (t, i) { return { values: [cell(t, i === 0 ? { userEnteredFormat: { textFormat: { bold: true, fontSize: 14 } } } : null)] }; }) }] }
+          data: [{ startRow: 0, startColumn: 0, rowData: GUIDE.map(function (t, i) { return { values: [tcell(t, i === 0 ? { userEnteredFormat: { textFormat: { bold: true, fontSize: 14 } } } : null)] }; }) }] }
       ]
     };
     var created;
@@ -1040,6 +1040,7 @@ function createCard(pageName, g) {
       .catch(function (err) {
         if (err && err.auth) { clearToken(); authInfo = "ההרשאה פגה"; showAuth(); updateDiag(); if (!hadCache && !items.length) showMessage("ההרשאה פגה. לחץ על \"🔑 עדכן\" למטה."); return; }
         if (err && err.forbidden) { authInfo = "אין לאתר גישה לגיליון – צריך לבחור אותו"; hideAuth(); showPick("בחר את הגיליון כדי לתת לאתר גישה"); updateDiag(); if (!hadCache && !items.length) showMessage("לאתר עדיין אין גישה לגיליון. לחץ על \"📂 בחר גיליון\" למטה."); return; }
+        authInfo = "שגיאה בטעינה: " + (err && err.message || err); updateDiag();   // 4.9: סיבת התקלה מוצגת באבחון
         if (!hadCache && !items.length) {
           showMessage(navigator.onLine ? "שגיאה בטעינת הנתונים." : "אין חיבור לאינטרנט ועדיין אין נתונים שמורים. התחבר פעם אחת כדי לשמור אותם.");
         } else {
