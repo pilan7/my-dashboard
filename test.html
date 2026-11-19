@@ -277,7 +277,9 @@ white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   <button type="button" id="diagBtn" title="הצגת נתוני אבחון: גרסה, הרשאת Google, עדכון אחרון ומה נקרא מהגיליון">אבחון</button>
   <button type="button" id="hardBtn" title="ניקוי המטמון וטעינה מחדש של קוד האתר מהשרת. לשימוש כשגרסה חדשה לא נטענה">רענון מלא</button>
   <span class="auth-wrap"><button type="button" class="auth-btn" id="authBtn" title="ההרשאה ל-Google פגה. לחיצה תחדש אותה ותטען נתונים עדכניים מהגיליון">🔑 עדכן</button><span class="auth-reason" id="authReason"></span></span>
+  <button type="button" class="auth-btn" id="createBtn" style="display:none" title="יצירת גיליון קישורים חדש ב-Drive שלך, עם הוראות וקישורים לדוגמה">✨ צור לי דשבורד</button>
   <button type="button" class="auth-btn" id="pickBtn" style="display:none" title="בחירת גיליון הקישורים מה-Drive שלך. האתר יקבל גישה רק לגיליון שתבחר">📂 בחר גיליון</button>
+  <button type="button" id="shareBtn" title="שליחת קישור ההתקנה של הדשבורד למישהו אחר (בטלפון: תפריט שיתוף, במחשב: העתקה ללוח)">📤 שתף</button>
 </footer>
 <pre class="diag" id="diag" hidden></pre>
 
@@ -286,7 +288,7 @@ white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   "use strict";
 
   /* ================= הגדרות ================= */
-  var APP_VERSION = "4.8";
+  var APP_VERSION = "4.9";
   var TEST_MODE = true;  // true = סביבת בדיקה (test.html): בלי Service Worker ובלי בדיקת גרסה אוטומטית
   // 4.7: מזהה הגיליון כבר לא קבוע בקוד – המשתמש בוחר את הגיליון פעם אחת (חלון בחירת קבצים של Google) והבחירה נשמרת במכשיר
   var SHEET_KEY    = "PEREZ_SHEET_ID";
@@ -786,8 +788,14 @@ function createCard(pageName, g) {
 
   /* ===== 4.7: בחירת הגיליון (Google Picker) ===== */
   function getSheetId() { return lsGet(SHEET_KEY) || ""; }
-  function showPick(reason) { $("pickBtn").style.display = ""; if (reason) $("authReason").textContent = reason; }
-  function hidePick() { $("pickBtn").style.display = "none"; }
+  // 4.9: allowCreate = להציג גם "צור לי דשבורד" (כשלא נמצא אף גיליון)
+  function showPick(reason, allowCreate) {
+    $("pickBtn").textContent = allowCreate ? "📂 יש לי כבר גיליון" : "📂 בחר גיליון";
+    $("pickBtn").style.display = "";
+    $("createBtn").style.display = allowCreate ? "" : "none";
+    if (reason) $("authReason").textContent = reason;
+  }
+  function hidePick() { $("pickBtn").style.display = "none"; $("createBtn").style.display = "none"; }
   var gapiPromise = null;
   function loadPickerLib() {
     if (window.google && google.picker) return Promise.resolve();
@@ -832,6 +840,7 @@ function createCard(pageName, g) {
 
   // 4.8: במכשיר חדש – מחפשים לבד את הגיליון שכבר נבחר בעבר (בהרשאה המצומצמת Drive מחזיר רק קבצים שהאתר קיבל אליהם גישה)
   var autoFindTried = false;
+  var foundCount = -1;   // 4.9: כמה גיליונות נמצאו בחיפוש האוטומטי (0 = משתמש חדש)
   function findKnownSheet(token) {
     var q = encodeURIComponent("mimeType='application/vnd.google-apps.spreadsheet' and trashed=false");
     var url = "https://www.googleapis.com/drive/v3/files?q=" + q + "&fields=files(id,name)&orderBy=modifiedTime%20desc&pageSize=10";
@@ -839,6 +848,122 @@ function createCard(pageName, g) {
       .then(function (res) { if (!res.ok) throw new Error("drive " + res.status); return res.json(); })
       .then(function (j) { return (j && j.files) || []; });
   }
+
+  /* ===== 4.9: יצירת גיליון חדש מתבנית ===== */
+  var TEMPLATE_VERSION = "4.9";
+  var HEADERS = [
+    [" ", "עמוד: הלשונית באתר שבה הקישור יופיע. בוחרים מהרשימה הנפתחת או כותבים שם חדש. ריק = ראשי."],
+    ["קטגוריה", "קטגוריה: הכרטיס בתוך העמוד. טקסט חופשי. הקטגוריה \"כפתורים\" מוצגת ככפתורים מהירים בראש העמוד."],
+    ["שם הקישור", "שם הקישור: הטקסט שמוצג באתר. שורה בלי URL מוצגת ככותרת משנה בתוך הכרטיס."],
+    ["כתובת URL", "כתובת URL: כתובת מלאה שהקישור פותח. ריק = השורה מוצגת ככותרת משנה."],
+    ["פעיל", "פעיל: כן או ריק = השורה מוצגת באתר. לא (או כל ערך אחר) = השורה מוסתרת."],
+    ["מצב התחלתי", "מצב התחלתי: פתוח = הכרטיס נפתח בטעינת הדף. מספיק בשורה אחת של הקטגוריה. ריק = סגור (ברירת מחדל)."],
+    ["צבע עמוד", "צבע עמוד: קוד צבע בפורמט #RRGGBB, למשל #8c1d2f. מספיק בשורה אחת של העמוד. ריק = כחול ברירת מחדל."],
+    ["הסבר - טול טיפ", "הסבר - טול טיפ: טקסט שמופיע כשמעבירים את העכבר מעל הפריט באתר (במחשב בלבד, לא בטלפון). טקסט חופשי, לא חובה. ריק = מוצג שם הקישור."]
+  ];
+  var SAMPLE_ROWS = [
+    ["ראשי", "כפתורים", "Gmail", "https://mail.google.com", "כן", "", "", "תיבת הדואר"],
+    ["ראשי", "כפתורים", "יומן", "https://calendar.google.com", "כן", "", "", ""],
+    ["ראשי", "כפתורים", "חיפוש ב-Drive", "https://drive.google.com", "כן", "", "", "כפתור שהשם שלו מכיל \"חיפוש\" פותח חלון חיפוש ב-Drive"],
+    ["ראשי", "שימושי", "מזג אוויר", "https://ims.gov.il/he/forecast_data", "כן", "פתוח", "", "תחזית השירות המטאורולוגי"],
+    ["ראשי", "שימושי", "מפות", "https://maps.google.com", "כן", "", "", ""],
+    ["ראשי", "שימושי", "תרגום", "https://translate.google.com", "כן", "", "", ""],
+    ["ראשי", "שימושי", "דוגמה לכותרת משנה", "", "כן", "", "", "שורה בלי כתובת מוצגת ככותרת"],
+    ["ראשי", "שימושי", "YouTube", "https://www.youtube.com", "כן", "", "", ""],
+    ["עבודה", "מסמכים", "Google Docs", "https://docs.google.com", "כן", "פתוח", "#2e7d32", ""],
+    ["עבודה", "מסמכים", "Google Sheets", "https://sheets.google.com", "כן", "", "", ""],
+    ["עבודה", "מסמכים", "קישור מוסתר לדוגמה", "https://www.google.com", "לא", "", "", "לא: השורה לא מוצגת באתר"]
+  ];
+  var GUIDE = [
+    "מדריך קצר – דשבורד קישורים",
+    "",
+    "כל שורה בלשונית \"קישורים\" היא קישור אחד באתר. שינוי בגיליון מופיע באתר בפתיחה הבאה (או בחזרה לחלון).",
+    "עמודה A – עמוד: הלשונית באתר. אפשר ליצור עמוד חדש פשוט על ידי כתיבת שם חדש.",
+    "עמודה B – קטגוריה: הכרטיס בתוך העמוד. קטגוריה בשם \"כפתורים\" מוצגת ככפתורים מהירים בראש העמוד.",
+    "עמודה C – שם הקישור, עמודה D – הכתובת. שורה בלי כתובת מוצגת ככותרת משנה.",
+    "עמודה E – פעיל: לא = הקישור מוסתר בלי למחוק אותו.",
+    "עמודה F – מצב התחלתי: פתוח = הכרטיס פתוח בטעינת הדף.",
+    "עמודה G – צבע העמוד (למשל #2e7d32). עמודה H – טקסט הסבר שמופיע בריחוף העכבר.",
+    "",
+    "חשוב: לא לשנות את סדר העמודות ולא להעביר את לשונית \"קישורים\" ממקומה הראשון.",
+    "מותר לשנות את שם הקובץ ולהעביר אותו לכל תיקייה ב-Drive – האתר ימשיך לעבוד.",
+    "",
+    "גרסת תבנית: " + TEMPLATE_VERSION
+  ];
+  function cell(v, extra) { var c = { userEnteredValue: { stringValue: v } }; if (extra) for (var k in extra) c[k] = extra[k]; return c; }
+  function gapiPost(url, token, body) {
+    return fetch(url, { method: "POST", headers: { "Authorization": "Bearer " + token, "Content-Type": "application/json" }, body: JSON.stringify(body) })
+      .then(function (res) { if (!res.ok) return res.text().then(function (t) { throw new Error(res.status + " " + t.slice(0, 120)); }); return res.json(); });
+  }
+  function createSheet() {
+    var token = getToken();
+    if (!token) { showAuth("התחבר קודם, ואז צור דשבורד"); return; }
+    $("createBtn").disabled = true; $("createBtn").textContent = "יוצר...";
+    showMessage("יוצר עבורך גיליון קישורים חדש ב-Drive...");
+    var header = HEADERS.map(function (h) { return cell(h[0], { note: h[1], userEnteredFormat: { textFormat: { bold: true }, backgroundColor: { red: .9, green: .93, blue: .97 } } }); });
+    var rows = [{ values: header }].concat(SAMPLE_ROWS.map(function (r) { return { values: r.map(function (v) { return cell(v); }) }; }));
+    var body = {
+      properties: { title: "דשבורד קישורים" },
+      sheets: [
+        { properties: { sheetId: 0, title: "קישורים", rightToLeft: true, gridProperties: { frozenRowCount: 1, rowCount: 300, columnCount: 8 } },
+          data: [{ startRow: 0, startColumn: 0, rowData: rows }] },
+        { properties: { sheetId: 1, title: "הוראות", rightToLeft: true, gridProperties: { rowCount: 30, columnCount: 1 } },
+          data: [{ startRow: 0, startColumn: 0, rowData: GUIDE.map(function (t, i) { return { values: [cell(t, i === 0 ? { userEnteredFormat: { textFormat: { bold: true, fontSize: 14 } } } : null)] }; }) }] }
+      ]
+    };
+    var created;
+    gapiPost("https://sheets.googleapis.com/v4/spreadsheets", token, body)
+      .then(function (r) {
+        created = r;
+        function list(vals, strict) { return { condition: { type: "ONE_OF_LIST", values: vals.map(function (v) { return { userEnteredValue: v }; }) }, strict: strict, showCustomUi: true }; }
+        function range(col) { return { sheetId: 0, startRowIndex: 1, endRowIndex: 300, startColumnIndex: col, endColumnIndex: col + 1 }; }
+        var widths = [90, 130, 200, 280, 60, 90, 90, 260];
+        var reqs = [
+          { setDataValidation: { range: range(0), rule: list(["ראשי", "עבודה"], false) } },
+          { setDataValidation: { range: range(4), rule: list(["כן", "לא"], true) } },
+          { setDataValidation: { range: range(5), rule: list(["פתוח"], false) } },
+          { updateDimensionProperties: { range: { sheetId: 1, dimension: "COLUMNS", startIndex: 0, endIndex: 1 }, properties: { pixelSize: 700 }, fields: "pixelSize" } }
+        ];
+        widths.forEach(function (w, i) { reqs.push({ updateDimensionProperties: { range: { sheetId: 0, dimension: "COLUMNS", startIndex: i, endIndex: i + 1 }, properties: { pixelSize: w }, fields: "pixelSize" } }); });
+        return gapiPost("https://sheets.googleapis.com/v4/spreadsheets/" + r.spreadsheetId + ":batchUpdate", token, { requests: reqs })
+          .catch(function () { /* עיצוב בלבד – הגיליון כבר נוצר */ });
+      })
+      .then(function () {
+        lsSet(SHEET_KEY, created.spreadsheetId);
+        authInfo = "נוצר גיליון חדש: דשבורד קישורים";
+        hidePick();
+        $("authReason").textContent = "";
+        refresh(true);
+      }, function (e) {
+        authInfo = "יצירת הגיליון נכשלה: " + e.message;
+        showMessage("יצירת הגיליון נכשלה. נסה שוב, ואם זה חוזר – פתח את \"אבחון\".");
+        updateDiag();
+      })
+      .then(function () { $("createBtn").disabled = false; $("createBtn").textContent = "✨ צור לי דשבורד"; });
+  }
+  $("createBtn").addEventListener("click", createSheet);
+
+  /* ===== 4.9: שיתוף קישור ההתקנה ===== */
+  var INSTALL_URL = "https://pilan7.github.io/my-dashboard/";
+  var SHARE_TEXT = "דשבורד קישורים אישי – לחץ להתקנה:";
+  function flashShare(t) { var b = $("shareBtn"); b.textContent = t; setTimeout(function () { b.textContent = "📤 שתף"; }, 2000); }
+  function copyText(t) {
+    if (navigator.clipboard && navigator.clipboard.writeText) return navigator.clipboard.writeText(t);
+    return new Promise(function (ok, fail) {
+      var ta = document.createElement("textarea"); ta.value = t; ta.style.position = "fixed"; ta.style.opacity = "0";
+      document.body.appendChild(ta); ta.select();
+      try { if (document.execCommand("copy")) ok(); else fail(); } catch (e) { fail(e); }
+      document.body.removeChild(ta);
+    });
+  }
+  $("shareBtn").addEventListener("click", function () {
+    var touch = window.matchMedia && window.matchMedia("(pointer: coarse)").matches;
+    if (touch && navigator.share) {
+      navigator.share({ title: "דשבורד קישורים", text: SHARE_TEXT, url: INSTALL_URL }).catch(function () {});
+      return;
+    }
+    copyText(SHARE_TEXT + " " + INSTALL_URL).then(function () { flashShare("הועתק ✓"); }, function () { flashShare("ההעתקה נכשלה"); });
+  });
 
   function loadFrom(url, token) {
     var ctrl = ("AbortController" in window) ? new AbortController() : null;
@@ -877,6 +1002,7 @@ function createCard(pageName, g) {
     if (!sheetId && !autoFindTried) {   // 4.8: ניסיון אחד לאתר לבד גיליון שכבר נבחר בחשבון הזה
       autoFindTried = true;
       findKnownSheet(token).then(function (files) {
+        foundCount = files.length;
         if (files.length === 1) {
           lsSet(SHEET_KEY, files[0].id);
           authInfo = "הגיליון אותר אוטומטית: " + files[0].name;
@@ -892,8 +1018,11 @@ function createCard(pageName, g) {
     }
     if (!sheetId) {   // 4.7: עוד לא נבחר גיליון במכשיר הזה
       hideAuth();
-      showPick();
-      if (!hadCache && !items.length) showMessage("כדי לטעון את הקישורים, לחץ על \"📂 בחר גיליון\" למטה ובחר את גיליון הקישורים שלך.");
+      var isNew = foundCount === 0;
+      showPick("", isNew);
+      if (!hadCache && !items.length) showMessage(isNew
+        ? "ברוך הבא! לחץ למטה על \"✨ צור לי דשבורד\" כדי ליצור גיליון קישורים חדש ב-Drive שלך, או על \"📂 יש לי כבר גיליון\" אם כבר יש לך אחד."
+        : "כדי לטעון את הקישורים, לחץ על \"📂 בחר גיליון\" למטה ובחר את גיליון הקישורים שלך.");
       updateDiag();
       return;
     }
