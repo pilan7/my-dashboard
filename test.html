@@ -299,7 +299,7 @@ white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   "use strict";
 
   /* ================= הגדרות ================= */
-  var APP_VERSION = "5.2";
+  var APP_VERSION = "5.3";
   var TEST_MODE = true;  // true = סביבת בדיקה (test.html): בלי Service Worker ובלי בדיקת גרסה אוטומטית
   // 5.0: גרסאות בשליטת המשתמש – כל גרסה יושבת קבועה בתיקייה v/<גרסה>/ ; הכתובת הראשית רק מפנה לגרסה שנבחרה
   var VERSIONED = /\/v\/[^\/]+\/(index\.html)?$/.test(location.pathname);
@@ -910,7 +910,8 @@ function createCard(pageName, g) {
     "גרסת תבנית: " + TEMPLATE_VERSION
   ];
   // 4.9.1: תבנית שמתוחזקת בגיליון "תבנית דשבורד" (משותף: כל מי שיש לו הקישור – צפייה). ריק = הדוגמאות שבקוד
-  var TEMPLATE_ID = "";
+  var TEMPLATE_ID = "1rIeNdDvMTgDujVavESKAPAseePcJa0a44R6kiEEiN04";   // 5.3: "Links Dashboard Template" (שיתוף בקישור – צפייה)
+  var TEMPLATE_GIDS = { links: "0", guide: "1893578393" };               // הלשוניות לפי מספר פנימי – שינוי שם לשונית לא שובר
   function parseCsv(text) {
     var rows = [], row = [], f = "", q = false;
     for (var i = 0; i < text.length; i++) {
@@ -924,22 +925,28 @@ function createCard(pageName, g) {
     if (f !== "" || row.length) { row.push(f); rows.push(row); }
     return rows;
   }
-  function fetchTab(name, headers) {
-    var url = "https://docs.google.com/spreadsheets/d/" + TEMPLATE_ID + "/gviz/tq?tqx=out:csv&headers=" + headers + "&sheet=" + encodeURIComponent(name);
+  function fetchTab(gid, headers) {
+    var url = "https://docs.google.com/spreadsheets/d/" + TEMPLATE_ID + "/gviz/tq?tqx=out:csv&headers=" + headers + "&gid=" + gid;
     return fetch(url, { cache: "no-store" }).then(function (r) { if (!r.ok) throw new Error("template " + r.status); return r.text(); }).then(parseCsv);
   }
   // מחזיר { rows, guide } מהתבנית, או מהדוגמאות שבקוד אם אין תבנית / היא לא זמינה
   function loadTemplate() {
-    var fallback = { rows: SAMPLE_ROWS, guide: GUIDE, src: "דוגמאות מובנות" };
+    var fallback = { rows: SAMPLE_ROWS, guide: GUIDE.map(function (t) { return [t]; }), src: "דוגמאות מובנות" };
     if (!TEMPLATE_ID) return Promise.resolve(fallback);
-    return Promise.all([fetchTab("קישורים", 1), fetchTab("הוראות", 0).catch(function () { return null; })])
+    return Promise.all([fetchTab(TEMPLATE_GIDS.links, 1), fetchTab(TEMPLATE_GIDS.guide, 0).catch(function () { return null; })])
       .then(function (res) {
         var rows = res[0].slice(1).filter(function (r) { return r.some(function (c) { return c.trim(); }); })
           .map(function (r) { var o = []; for (var i = 0; i < 8; i++) o.push((r[i] || "").trim()); return o; });
         if (!rows.length) return fallback;
-        var guide = res[1] ? res[1].map(function (r) { return r[0] || ""; }) : GUIDE;
-        while (guide.length && !guide[guide.length - 1]) guide.pop();
-        return { rows: rows, guide: guide.length ? guide : GUIDE, src: "תבנית" };
+        // 5.3: טבלת ההוראות מועתקת במלואה (כל העמודות), בלי עמודות ושורות ריקות בסוף
+        var guide = GUIDE.map(function (t) { return [t]; });
+        if (res[1]) {
+          var g = res[1].map(function (r) { return r.map(function (c) { return (c || "").trim(); }); });
+          while (g.length && !g[g.length - 1].some(function (c) { return c; })) g.pop();
+          var w = 0; g.forEach(function (r) { for (var i = r.length - 1; i >= 0; i--) if (r[i]) { w = Math.max(w, i + 1); break; } });
+          if (g.length && w) guide = g.map(function (r) { return r.slice(0, w); });
+        }
+        return { rows: rows, guide: guide, src: "תבנית" };
       }, function () { return fallback; });
   }
   function tcell(v, extra) { var c = { userEnteredValue: { stringValue: v } }; if (extra) for (var k in extra) c[k] = extra[k]; return c; }
@@ -954,7 +961,7 @@ function createCard(pageName, g) {
     showMessage("יוצר עבורך גיליון קישורים חדש ב-Drive...");
     var tpl, created;
     loadTemplate().then(function (t) { tpl = t; return buildSheet(token, t); })
-      .then(function (r) { created = r; return formatSheet(token, r.spreadsheetId, tpl.rows); })
+      .then(function (r) { created = r; return formatSheet(token, r.spreadsheetId, tpl.rows, guideCols(tpl.guide)); })
       .then(function () {
         lsSet(SHEET_KEY, created.spreadsheetId);
         authInfo = "נוצר גיליון חדש (" + tpl.src + "): דשבורד קישורים";
@@ -968,6 +975,7 @@ function createCard(pageName, g) {
       })
       .then(function () { $("createBtn").disabled = false; $("createBtn").textContent = "✨ צור לי דשבורד"; });
   }
+  function guideCols(guide) { var w = 1; guide.forEach(function (r) { w = Math.max(w, r.length); }); return w; }
   function buildSheet(token, tpl) {
     var header = HEADERS.map(function (h) { return tcell(h[0], { note: h[1], userEnteredFormat: { textFormat: { bold: true }, backgroundColor: { red: .9, green: .93, blue: .97 } } }); });
     var rows = [{ values: header }].concat(tpl.rows.map(function (r) { return { values: r.map(function (v) { return tcell(v); }) }; }));
@@ -976,13 +984,13 @@ function createCard(pageName, g) {
       sheets: [
         { properties: { sheetId: 0, title: "קישורים", rightToLeft: true, gridProperties: { frozenRowCount: 1, rowCount: Math.max(300, tpl.rows.length + 100), columnCount: 8 } },
           data: [{ startRow: 0, startColumn: 0, rowData: rows }] },
-        { properties: { sheetId: 1, title: "הוראות", rightToLeft: true, gridProperties: { rowCount: Math.max(30, tpl.guide.length + 5), columnCount: 1 } },
-          data: [{ startRow: 0, startColumn: 0, rowData: tpl.guide.map(function (t, i) { return { values: [tcell(t, i === 0 ? { userEnteredFormat: { textFormat: { bold: true, fontSize: 14 } } } : null)] }; }) }] }
+        { properties: { sheetId: 1, title: "הוראות", rightToLeft: true, gridProperties: { rowCount: Math.max(30, tpl.guide.length + 5), columnCount: guideCols(tpl.guide) } },
+          data: [{ startRow: 0, startColumn: 0, rowData: tpl.guide.map(function (r, i) { return { values: r.map(function (t, j) { return tcell(t, i === 0 && j === 0 ? { userEnteredFormat: { textFormat: { bold: true, fontSize: 14 } } } : null); }) }; }) }] }
       ]
     };
     return gapiPost("https://sheets.googleapis.com/v4/spreadsheets", token, body);
   }
-  function formatSheet(token, sid, rows) {
+  function formatSheet(token, sid, rows, gcols) {
         var pages = ["ראשי"]; rows.forEach(function (r) { if (r[0] && pages.indexOf(r[0]) === -1) pages.push(r[0]); });
         function list(vals, strict) { return { condition: { type: "ONE_OF_LIST", values: vals.map(function (v) { return { userEnteredValue: v }; }) }, strict: strict, showCustomUi: true }; }
         function range(col) { return { sheetId: 0, startRowIndex: 1, endRowIndex: 300, startColumnIndex: col, endColumnIndex: col + 1 }; }
@@ -991,7 +999,7 @@ function createCard(pageName, g) {
           { setDataValidation: { range: range(0), rule: list(pages, false) } },
           { setDataValidation: { range: range(4), rule: list(["כן", "לא"], true) } },
           { setDataValidation: { range: range(5), rule: list(["פתוח"], false) } },
-          { updateDimensionProperties: { range: { sheetId: 1, dimension: "COLUMNS", startIndex: 0, endIndex: 1 }, properties: { pixelSize: 700 }, fields: "pixelSize" } }
+          { updateDimensionProperties: { range: { sheetId: 1, dimension: "COLUMNS", startIndex: 0, endIndex: gcols }, properties: { pixelSize: gcols > 1 ? 180 : 700 }, fields: "pixelSize" } }
         ];
         widths.forEach(function (w, i) { reqs.push({ updateDimensionProperties: { range: { sheetId: 0, dimension: "COLUMNS", startIndex: i, endIndex: i + 1 }, properties: { pixelSize: w }, fields: "pixelSize" } }); });
         return gapiPost("https://sheets.googleapis.com/v4/spreadsheets/" + sid + ":batchUpdate", token, { requests: reqs })
