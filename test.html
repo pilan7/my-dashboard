@@ -298,7 +298,7 @@ white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   var PICKER_KEY   = "AIzaSyDzBX0NtBI0cadMDJNKqjz76ujUz16XW_0";   // מפתח API מוגבל ל-pilan7.github.io ול-Google Picker API בלבד
   var APP_ID       = "171942488002";    // מספר הפרויקט ב-Google Cloud (נדרש כדי שהבחירה תעניק לאתר גישה לקובץ)
   function apiUrl(id) { return "https://sheets.googleapis.com/v4/spreadsheets/" + id + "/values/A:H?majorDimension=ROWS"; }   // A:H = הגיליון הראשון (H = הסבר - טול טיפ, 4.6)
-  var TOKEN_KEY    = TEST_MODE ? "PEREZ_GTOKEN_DF" : "PEREZ_GTOKEN";   // הרשאה זמנית (כשעה) – נשמרת רק במכשיר; בבדיקה בשם נפרד כדי לא לפגוע באתר הראשי
+  var TOKEN_KEY    = "PEREZ_GTOKEN_DF";   // הרשאה זמנית (כשעה) – נשמרת רק במכשיר; 4.8: שם חדש, כי הרשאה ישנה (spreadsheets) לא מתאימה להרשאה המצומצמת
   var CACHE_KEY    = "PEREZ_DASHBOARD_DATA_V4";
   var OLD_PAGE_KEY = "PEREZ_DASHBOARD_LAST_PAGE"; // לא בשימוש מאז 3.7 (נמחק בטעינה)
 var MODE_KEY = "PEREZ_THEME"; // מצב תצוגה: dark / light, או ללא ערך = אוטומטי
