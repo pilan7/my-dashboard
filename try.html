@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#173b5e">
+<title>[בדיקה] דשבורד פרז</title>
+<style>
+html, body { height: 100%; margin: 0; }
+body { display: flex; align-items: center; justify-content: center; background: #173b5e; color: #fff; font-family: system-ui, -apple-system, "Segoe UI", Arial, sans-serif; font-size: 1rem; text-align: center; padding: 20px; box-sizing: border-box; }
+</style>
+</head>
+<body>
+<div id="msg">טוען...</div>
+<script>
+/* דף כניסה (מפנה): בודק איזו גרסה המשתמש בחר וטוען אותה מתוך v/<גרסה>/
+ * try.html = ערוץ הבדיקה (versions-test.json). index.html יהיה אותו קוד עם CHANNEL = "prod". */
+(function () {
+  "use strict";
+  var CHANNEL = "test";
+  var SFX = CHANNEL === "test" ? "_TEST" : "";
+  var LIST = CHANNEL === "test" ? "versions-test.json" : "versions.json";
+  var KEY = "PEREZ_APP_VER" + SFX, CACHE = "PEREZ_VERSIONS" + SFX, FORCED = "PEREZ_VER_FORCED" + SFX;
+  function get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
+  function set(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
+  function cmp(a, b) {
+    a = String(a).split("."); b = String(b).split(".");
+    for (var i = 0; i < Math.max(a.length, b.length); i++) { var x = +a[i] || 0, y = +b[i] || 0; if (x !== y) return x < y ? -1 : 1; }
+    return 0;
+  }
+  var done = false;
+  function go(m) {
+    if (done) return; done = true;
+    var list = (m.versions || []).map(function (x) { return x.v; });
+    var cur = get(KEY);
+    if (!cur || (list.length && list.indexOf(cur) === -1)) cur = m.latest;            // משתמש חדש / גרסה שהוסרה
+    else if (m.minimum && cmp(cur, m.minimum) < 0) { cur = m.latest; set(FORCED, cur); }   // עדכון חובה
+    set(KEY, cur);
+    location.replace("v/" + cur + "/" + (CHANNEL === "test" ? "?ch=test" : "") + location.hash);
+  }
+  function offline() {
+    var saved = null;
+    try { saved = JSON.parse(get(CACHE) || "null"); } catch (e) {}
+    if (saved && saved.latest) return go(saved);
+    var cur = get(KEY);
+    if (cur) return go({ latest: cur, versions: [] });
+    document.getElementById("msg").textContent = "אין חיבור לאינטרנט. בפעם הראשונה צריך לפתוח את הדשבורד עם חיבור.";
+  }
+  setTimeout(offline, 4000);   // רשת איטית – ממשיכים עם מה שיש
+  fetch(LIST + "?sw-bypass=1&t=" + Date.now(), { cache: "no-store" })
+    .then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); })
+    .then(function (m) { if (!m || !m.latest) throw new Error("bad"); set(CACHE, JSON.stringify(m)); go(m); })
+    .catch(offline);
+})();
+</script>
+</body>
+</html>
