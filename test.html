@@ -277,6 +277,7 @@ white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   <button type="button" id="diagBtn" title="הצגת נתוני אבחון: גרסה, הרשאת Google, עדכון אחרון ומה נקרא מהגיליון">אבחון</button>
   <button type="button" id="hardBtn" title="ניקוי המטמון וטעינה מחדש של קוד האתר מהשרת. לשימוש כשגרסה חדשה לא נטענה">רענון מלא</button>
   <span class="auth-wrap"><button type="button" class="auth-btn" id="authBtn" title="ההרשאה ל-Google פגה. לחיצה תחדש אותה ותטען נתונים עדכניים מהגיליון">🔑 עדכן</button><span class="auth-reason" id="authReason"></span></span>
+  <button type="button" class="auth-btn" id="pickBtn" style="display:none" title="בחירת גיליון הקישורים מה-Drive שלך. האתר יקבל גישה רק לגיליון שתבחר">📂 בחר גיליון</button>
 </footer>
 <pre class="diag" id="diag" hidden></pre>
 
@@ -285,15 +286,19 @@ white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   "use strict";
 
   /* ================= הגדרות ================= */
-  var APP_VERSION = "4.6";
+  var APP_VERSION = "4.7";
   var TEST_MODE = true;  // true = סביבת בדיקה (test.html): בלי Service Worker ובלי בדיקת גרסה אוטומטית
-  var SHEET_ID     = "1uNJ1JqjcHdCpi4YVe1gjIxBFPPfoNgCiel-_rh1YR7w";
+  // 4.7: מזהה הגיליון כבר לא קבוע בקוד – המשתמש בוחר את הגיליון פעם אחת (חלון בחירת קבצים של Google) והבחירה נשמרת במכשיר
+  var SHEET_KEY    = "PEREZ_SHEET_ID";
   var DEFAULT_PAGE = "ראשי";                 // שורות ללא ערך בעמודה A שייכות לעמוד הזה
   // 4.0: קריאה דרך Google Sheets API עם הרשאת המשתמש (הגיליון יכול להיות פרטי)
   var CLIENT_ID    = "171942488002-3r3e9fceq8tqpdd6o9tir65kdcnv9j9p.apps.googleusercontent.com";
-  var SCOPE        = "https://www.googleapis.com/auth/spreadsheets.readonly";
-  var API_URL      = "https://sheets.googleapis.com/v4/spreadsheets/" + SHEET_ID + "/values/A:H?majorDimension=ROWS";   // A:H = הגיליון הראשון (H = הסבר - טול טיפ, 4.6)
-  var TOKEN_KEY    = "PEREZ_GTOKEN";   // הרשאה זמנית (כשעה) – נשמרת רק במכשיר
+  // 4.7: הרשאה מצומצמת – גישה רק לקבצים שהמשתמש בחר באתר (לא דורשת אימות אפליקציה מ-Google)
+  var SCOPE        = "https://www.googleapis.com/auth/drive.file";
+  var PICKER_KEY   = "AIzaSyDzBX0NtBI0cadMDJNKqjz76ujUz16XW_0";   // מפתח API מוגבל ל-pilan7.github.io ול-Google Picker API בלבד
+  var APP_ID       = "171942488002";    // מספר הפרויקט ב-Google Cloud (נדרש כדי שהבחירה תעניק לאתר גישה לקובץ)
+  function apiUrl(id) { return "https://sheets.googleapis.com/v4/spreadsheets/" + id + "/values/A:H?majorDimension=ROWS"; }   // A:H = הגיליון הראשון (H = הסבר - טול טיפ, 4.6)
+  var TOKEN_KEY    = TEST_MODE ? "PEREZ_GTOKEN_DF" : "PEREZ_GTOKEN";   // הרשאה זמנית (כשעה) – נשמרת רק במכשיר; בבדיקה בשם נפרד כדי לא לפגוע באתר הראשי
   var CACHE_KEY    = "PEREZ_DASHBOARD_DATA_V4";
   var OLD_PAGE_KEY = "PEREZ_DASHBOARD_LAST_PAGE"; // לא בשימוש מאז 3.7 (נמחק בטעינה)
 var MODE_KEY = "PEREZ_THEME"; // מצב תצוגה: dark / light, או ללא ערך = אוטומטי
@@ -779,6 +784,52 @@ function createCard(pageName, g) {
   }
   $("authBtn").addEventListener("click", signIn);
 
+  /* ===== 4.7: בחירת הגיליון (Google Picker) ===== */
+  function getSheetId() { return lsGet(SHEET_KEY) || ""; }
+  function showPick(reason) { $("pickBtn").style.display = ""; if (reason) $("authReason").textContent = reason; }
+  function hidePick() { $("pickBtn").style.display = "none"; }
+  var gapiPromise = null;
+  function loadPickerLib() {
+    if (window.google && google.picker) return Promise.resolve();
+    if (gapiPromise) return gapiPromise;
+    gapiPromise = new Promise(function (ok, fail) {
+      var sc = document.createElement("script");
+      sc.src = "https://apis.google.com/js/api.js";
+      sc.onload = function () { gapi.load("picker", { callback: ok, onerror: fail }); };
+      sc.onerror = function () { gapiPromise = null; fail(new Error("load")); };
+      document.head.appendChild(sc);
+    });
+    return gapiPromise;
+  }
+  function openPicker() {
+    var token = getToken();
+    if (!token) { authInfo = "צריך להתחבר לפני בחירת גיליון"; showAuth("התחבר קודם, ואז בחר גיליון"); updateDiag(); return; }
+    if (PICKER_KEY === "PASTE_API_KEY") { authInfo = "חסר מפתח API לחלון הבחירה"; $("authReason").textContent = "חסר מפתח API בקוד"; updateDiag(); return; }
+    loadPickerLib().then(function () {
+      var view = new google.picker.DocsView(google.picker.ViewId.SPREADSHEETS).setMode(google.picker.DocsViewMode.LIST);
+      new google.picker.PickerBuilder()
+        .addView(view)
+        .setOAuthToken(token)
+        .setDeveloperKey(PICKER_KEY)
+        .setAppId(APP_ID)
+        .setLocale("iw")
+        .setTitle("בחר את גיליון הקישורים")
+        .setCallback(function (data) {
+          if (data.action === google.picker.Action.PICKED && data.docs && data.docs[0]) {
+            lsSet(SHEET_KEY, data.docs[0].id);
+            authInfo = "נבחר גיליון: " + (data.docs[0].name || data.docs[0].id);
+            hidePick();
+            $("authReason").textContent = "";
+            refresh(true);
+          }
+          updateDiag();
+        })
+        .build()
+        .setVisible(true);
+    }, function () { authInfo = "חלון הבחירה לא נטען"; $("authReason").textContent = "חלון הבחירה לא נטען, נסה שוב"; updateDiag(); });
+  }
+  $("pickBtn").addEventListener("click", openPicker);
+
   function loadFrom(url, token) {
     var ctrl = ("AbortController" in window) ? new AbortController() : null;
     var timer = ctrl ? setTimeout(function () { ctrl.abort(); }, FETCH_TIMEOUT_MS) : null;
@@ -787,7 +838,7 @@ function createCard(pageName, g) {
     return fetch(url, opts)
       .then(function (res) {
         if (res.status === 401) { var e1 = new Error("auth"); e1.auth = true; throw e1; }
-        if (res.status === 403) { var e2 = new Error("forbidden"); e2.forbidden = true; throw e2; }
+        if (res.status === 403 || res.status === 404) { var e2 = new Error("forbidden"); e2.forbidden = true; throw e2; }
         if (!res.ok) throw new Error("http " + res.status);
         return res.json();
       })
@@ -812,10 +863,19 @@ function createCard(pageName, g) {
       updateDiag();
       return;
     }
+    var sheetId = getSheetId();
+    if (!sheetId) {   // 4.7: עוד לא נבחר גיליון במכשיר הזה
+      hideAuth();
+      showPick();
+      if (!hadCache && !items.length) showMessage("כדי לטעון את הקישורים, לחץ על \"📂 בחר גיליון\" למטה ובחר את גיליון הקישורים שלך.");
+      updateDiag();
+      return;
+    }
     fetchMode = "Sheets API";
-    loadFrom(API_URL, token)
+    loadFrom(apiUrl(sheetId), token)
       .then(function (fresh) {
         hideAuth();
+        hidePick();
         var ts = Date.now();
         lsSet(CACHE_KEY, JSON.stringify({ ts: ts, items: fresh }));
         applyData(fresh, ts);
@@ -824,7 +884,7 @@ function createCard(pageName, g) {
       })
       .catch(function (err) {
         if (err && err.auth) { clearToken(); authInfo = "ההרשאה פגה"; showAuth(); updateDiag(); if (!hadCache && !items.length) showMessage("ההרשאה פגה. לחץ על \"🔑 עדכן\" למטה."); return; }
-        if (err && err.forbidden) { authInfo = "403: לחשבון שהתחברת איתו אין גישה לגיליון"; showAuth("לחשבון הזה אין גישה לגיליון"); updateDiag(); if (!hadCache && !items.length) showMessage("לחשבון שהתחברת איתו אין גישה לגיליון."); return; }
+        if (err && err.forbidden) { authInfo = "אין לאתר גישה לגיליון – צריך לבחור אותו"; hideAuth(); showPick("בחר את הגיליון כדי לתת לאתר גישה"); updateDiag(); if (!hadCache && !items.length) showMessage("לאתר עדיין אין גישה לגיליון. לחץ על \"📂 בחר גיליון\" למטה."); return; }
         if (!hadCache && !items.length) {
           showMessage(navigator.onLine ? "שגיאה בטעינת הנתונים." : "אין חיבור לאינטרנט ועדיין אין נתונים שמורים. התחבר פעם אחת כדי לשמור אותם.");
         } else {
@@ -941,6 +1001,7 @@ lines.push("מצב תצוגה: " + MODE_NAMES[getMode()] + (isDark() ? " (מוצ
     lines.push("רוחב מסך: " + window.innerWidth + " | אונליין: " + navigator.onLine);
     lines.push("עדכון נתונים אחרון: " + (lastSync ? fmtTime(lastSync) : "אין"));
     lines.push("הרשאת Google: " + (getToken() ? "בתוקף עוד כ-" + tokenLeft() + " דקות" : "אין / פגה") + (authInfo ? " | " + authInfo : ""));
+    lines.push("הרשאה: " + SCOPE.split("/").pop() + " | גיליון: " + (getSheetId() || "לא נבחר"));
     lines.push("כתובת: " + location.href);
     lines.push("גרסה שהשרת החזיר בבדיקה האחרונה: " + (serverVersion || "עוד לא נבדק / אין רשת"));
     lines.push("Service Worker: " + (navigator.serviceWorker && navigator.serviceWorker.controller ? navigator.serviceWorker.controller.scriptURL : "—"));
