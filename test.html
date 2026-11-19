@@ -218,6 +218,13 @@ white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 .app-footer button { border: 1px solid var(--chip-border); background: var(--surface); color: var(--navy-text); font: inherit; border-radius: 999px; padding: 3px 11px; cursor: pointer; }
 .diag { margin: 0 14px 20px; padding: 10px 12px; background: var(--hover); color: var(--text); border: 1px solid var(--card-border); border-radius: 8px; font-size: .74rem; line-height: 1.5; white-space: pre-wrap; word-break: break-word; direction: rtl; text-align: right; }
 .diag[hidden] { display: none; }
+.ver-banner { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 8px 14px; background: var(--navy); color: var(--on-navy); font-size: .85rem; }
+.ver-banner[hidden], .ver-panel[hidden] { display: none; }
+.ver-banner span { flex: 1 1 200px; }
+.ver-banner button { border: 1px solid var(--on-navy); background: transparent; color: var(--on-navy); font: inherit; border-radius: 999px; padding: 3px 12px; cursor: pointer; }
+.ver-banner #verUp { background: var(--on-navy); color: var(--navy); font-weight: 600; }
+.ver-panel { margin: -10px 14px 20px; font-size: .8rem; color: var(--text); }
+.ver-panel select, .ver-panel button { font: inherit; padding: 2px 6px; border-radius: 6px; }
 
 @media (max-width: 440px) {
 .columns-wrapper { gap: 8px; }
@@ -238,6 +245,7 @@ white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 </head>
 <body>
 
+<div class="ver-banner" id="verBanner" hidden><span id="verMsg"></span><button type="button" id="verUp">שדרג</button><button type="button" id="verLater">לא עכשיו</button></div>
 <header class="topbar">
   <div class="topbar-inner">
     <img class="logo" src="data:image/png;base64,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" alt="Perez" width="42" height="36">
@@ -284,14 +292,22 @@ white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   <button type="button" id="shareBtn" title="שליחת קישור ההתקנה של הדשבורד למישהו אחר (בטלפון: תפריט שיתוף, במחשב: העתקה ללוח)"><svg class="ico" viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path fill="currentColor" d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92s2.92-1.31 2.92-2.92-1.31-2.92-2.92-2.92z"/></svg> <span id="shareTxt">שתף</span></button>
 </footer>
 <pre class="diag" id="diag" hidden></pre>
+<div class="ver-panel" id="verPanel" hidden>גרסה: <select id="verSel" aria-label="בחירת גרסה"></select> <button type="button" id="verGo">עבור לגרסה</button></div>
 
 <script>
 (function () {
   "use strict";
 
   /* ================= הגדרות ================= */
-  var APP_VERSION = "4.9.1";
+  var APP_VERSION = "5.0";
   var TEST_MODE = true;  // true = סביבת בדיקה (test.html): בלי Service Worker ובלי בדיקת גרסה אוטומטית
+  // 5.0: גרסאות בשליטת המשתמש – כל גרסה יושבת קבועה בתיקייה v/<גרסה>/ ; הכתובת הראשית רק מפנה לגרסה שנבחרה
+  var VERSIONED = /\/v\/[^\/]+\/(index\.html)?$/.test(location.pathname);
+  var CHANNEL = (function () {   // prod = האתר הרגיל, test = ערוץ הבדיקה (try.html)
+    var m = /[?&]ch=(\w+)/.exec(location.search), c = m ? m[1] : "";
+    try { if (c) sessionStorage.setItem("PEREZ_CH", c); else c = sessionStorage.getItem("PEREZ_CH") || ""; } catch (e) {}
+    return c === "test" ? "test" : "prod";
+  })();
   // 4.7: מזהה הגיליון כבר לא קבוע בקוד – המשתמש בוחר את הגיליון פעם אחת (חלון בחירת קבצים של Google) והבחירה נשמרת במכשיר
   var SHEET_KEY    = "PEREZ_SHEET_ID";
   var DEFAULT_PAGE = "ראשי";                 // שורות ללא ערך בעמודה A שייכות לעמוד הזה
@@ -668,7 +684,7 @@ function createCard(pageName, g) {
       p.groups.forEach(function (g) { frag.appendChild(createCard(currentPage, g)); });
       container.appendChild(frag);
     }
-    document.title = (TEST_MODE ? "[בדיקה] " : "") + currentPage + " · דשבורד פרז";
+    document.title = (TEST_MODE || CHANNEL === "test" ? "[בדיקה] " : "") + currentPage + " · דשבורד פרז";
     lastModel = model;
     updateDiag();
   }
@@ -1256,9 +1272,81 @@ lines.push("מצב תצוגה: " + MODE_NAMES[getMode()] + (isDark() ? " (מוצ
       })
       .catch(noop);
   }
-  if (!TEST_MODE) {
+  if (!TEST_MODE && !VERSIONED) {   // 5.0: בגרסאות קבועות אין רענון אוטומטי – רק הצעה לשדרג
     setTimeout(checkVersion, 1500);
     document.addEventListener("visibilitychange", function () { if (!document.hidden) checkVersion(); });
+  }
+
+  /* ================= 5.0: גרסאות בשליטת המשתמש ================= */
+  var VER_SFX = CHANNEL === "test" ? "_TEST" : "";
+  var VER_KEY = "PEREZ_APP_VER" + VER_SFX;              // הגרסה שהמשתמש בחר (במכשיר)
+  var VER_CACHE = "PEREZ_VERSIONS" + VER_SFX;           // עותק אחרון של רשימת הגרסאות (לעבודה בלי רשת)
+  var VER_DISMISS = "PEREZ_VER_DISMISS" + VER_SFX;      // "לא עכשיו" – לאיזו גרסה
+  var VER_FORCED = "PEREZ_VER_FORCED" + VER_SFX;        // סימון אחרי עדכון חובה – להצגת הודעה
+  var VER_LIST = CHANNEL === "test" ? "versions-test.json" : "versions.json";
+  var verInfo = null;
+  try { verInfo = JSON.parse(lsGet(VER_CACHE) || "null"); } catch (e) {}
+  function cmpVer(a, b) {
+    a = String(a).split("."); b = String(b).split(".");
+    for (var i = 0; i < Math.max(a.length, b.length); i++) { var x = +a[i] || 0, y = +b[i] || 0; if (x !== y) return x < y ? -1 : 1; }
+    return 0;
+  }
+  function verNotes(m, v) { var f = (m.versions || []).filter(function (x) { return x.v === v; })[0]; return f && f.notes ? f.notes : ""; }
+  function goVersion(v) { lsSet(VER_KEY, v); location.replace("v/" + v + "/" + (CHANNEL === "test" ? "?ch=test" : "")); }
+  function showVerBanner(msg, canUpgrade) {
+    $("verMsg").textContent = msg;
+    $("verUp").style.display = canUpgrade ? "" : "none";
+    $("verLater").textContent = canUpgrade ? "לא עכשיו" : "סגור";
+    $("verBanner").hidden = false;
+  }
+  function renderVerPanel() {
+    var panel = $("verPanel");
+    if (!VERSIONED || !verInfo || $("diag").hidden) { panel.hidden = true; return; }
+    var sel = $("verSel"); sel.textContent = "";
+    (verInfo.versions || []).forEach(function (x) {
+      if (verInfo.minimum && cmpVer(x.v, verInfo.minimum) < 0) return;   // גרסאות מתחת למינימום לא מוצעות
+      var o = document.createElement("option");
+      o.value = x.v; o.textContent = x.v + (x.v === APP_VERSION ? " (נוכחית)" : "") + (x.notes ? " – " + x.notes : "");
+      if (x.v === APP_VERSION) o.selected = true;
+      sel.appendChild(o);
+    });
+    panel.hidden = false;
+  }
+  function checkVersions() {
+    if (!VERSIONED || !window.fetch) return;
+    fetch(VER_LIST + "?sw-bypass=1&t=" + Date.now(), { cache: "no-store" })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (m) {
+        if (!m || !m.latest) return;
+        verInfo = m; lsSet(VER_CACHE, JSON.stringify(m)); renderVerPanel();
+        if (m.minimum && cmpVer(APP_VERSION, m.minimum) < 0 && cmpVer(m.latest, APP_VERSION) > 0) {   // עדכון חובה
+          lsSet(VER_FORCED, m.latest); goVersion(m.latest); return;
+        }
+        if (cmpVer(m.latest, APP_VERSION) > 0 && lsGet(VER_DISMISS) !== m.latest) {
+          var n = verNotes(m, m.latest);
+          showVerBanner("גרסה " + m.latest + " זמינה" + (n ? " – " + n : ""), true);
+        }
+      })
+      .catch(noop);
+  }
+  if (VERSIONED) {
+    lsSet(VER_KEY, APP_VERSION);   // הגרסה שרצה עכשיו היא הבחירה במכשיר הזה
+    if (lsGet(VER_FORCED) === APP_VERSION) {
+      try { localStorage.removeItem(VER_FORCED); } catch (e) {}
+      showVerBanner("עודכנת לגרסה " + APP_VERSION + " (עדכון חובה)" + (verInfo && verNotes(verInfo, APP_VERSION) ? " – " + verNotes(verInfo, APP_VERSION) : ""), false);
+    }
+    $("verUp").addEventListener("click", function () { if (verInfo) goVersion(verInfo.latest); });
+    $("verLater").addEventListener("click", function () { if (verInfo && $("verUp").style.display !== "none") lsSet(VER_DISMISS, verInfo.latest); $("verBanner").hidden = true; });
+    $("verGo").addEventListener("click", function () {
+      var v = $("verSel").value;
+      if (!v || v === APP_VERSION) return;
+      if (verInfo && cmpVer(v, verInfo.latest) < 0) lsSet(VER_DISMISS, verInfo.latest);   // חזרה אחורה מכוונת – בלי הודעת שדרוג מיידית
+      goVersion(v);
+    });
+    $("diagBtn").addEventListener("click", renderVerPanel);
+    setTimeout(checkVersions, 1500);
+    document.addEventListener("visibilitychange", function () { if (!document.hidden) checkVersions(); });
+    $("verText").textContent = "גרסה " + APP_VERSION + (CHANNEL === "test" ? " · ערוץ בדיקה" : "");
   }
 
   /* ================= PWA: Service Worker ================= */
