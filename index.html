@@ -285,14 +285,14 @@ white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   "use strict";
 
   /* ================= הגדרות ================= */
-  var APP_VERSION = "4.5";
+  var APP_VERSION = "4.6";
   var TEST_MODE = false;  // true = סביבת בדיקה (test.html): בלי Service Worker ובלי בדיקת גרסה אוטומטית
   var SHEET_ID     = "1uNJ1JqjcHdCpi4YVe1gjIxBFPPfoNgCiel-_rh1YR7w";
   var DEFAULT_PAGE = "ראשי";                 // שורות ללא ערך בעמודה A שייכות לעמוד הזה
   // 4.0: קריאה דרך Google Sheets API עם הרשאת המשתמש (הגיליון יכול להיות פרטי)
   var CLIENT_ID    = "171942488002-3r3e9fceq8tqpdd6o9tir65kdcnv9j9p.apps.googleusercontent.com";
   var SCOPE        = "https://www.googleapis.com/auth/spreadsheets.readonly";
-  var API_URL      = "https://sheets.googleapis.com/v4/spreadsheets/" + SHEET_ID + "/values/A:G?majorDimension=ROWS";   // A:G = הגיליון הראשון
+  var API_URL      = "https://sheets.googleapis.com/v4/spreadsheets/" + SHEET_ID + "/values/A:H?majorDimension=ROWS";   // A:H = הגיליון הראשון (H = הסבר - טול טיפ, 4.6)
   var TOKEN_KEY    = "PEREZ_GTOKEN";   // הרשאה זמנית (כשעה) – נשמרת רק במכשיר
   var CACHE_KEY    = "PEREZ_DASHBOARD_DATA_V4";
   var OLD_PAGE_KEY = "PEREZ_DASHBOARD_LAST_PAGE"; // לא בשימוש מאז 3.7 (נמחק בטעינה)
@@ -433,6 +433,7 @@ applyMode(getMode());
       var url      = safeUrl(cell(r, 3));
       var active   = cell(r, 4).toLowerCase();
       var color    = normColor(cell(r, 6));
+      var tip      = cell(r, 7);   // עמודה H: הסבר - טול טיפ (4.6)
       var stateRaw = cell(r, 5);
       var state    = stateRaw.toLowerCase();
 
@@ -452,6 +453,7 @@ applyMode(getMode());
         category: category,
         title: title,
         url: url,
+        tip: tip,
         st: stateRaw,
         color: color,
         open: (state === "פתוח" || state === "open")   // ברירת מחדל: סגור. רק "פתוח" פותח
@@ -540,12 +542,13 @@ applyMode(getMode());
       if (isSearch) {
         a.textContent = "🔍 " + c.title;
         a.href = "search-drive.html";     // חיפוש ב-Drive: נפתח בדף נפרד
-        a.title = "חיפוש קבצים ומסמכים ב-Google Drive (נפתח בחלון חדש)";
+        a.title = c.tip || "חיפוש קבצים ומסמכים ב-Google Drive (נפתח בחלון חדש)";
         a.target = "_blank";
         a.rel = "noopener";
       } else if (c.url) {
         a.textContent = c.title;
         a.href = c.url; a.target = "_blank"; a.rel = "noopener";
+        if (c.tip) a.title = c.tip;
       } else { return; }
       bar.appendChild(a); count++;
     });
@@ -611,10 +614,12 @@ function createCard(pageName, g) {
     g.links.forEach(function (l) {
       if (l.url) {
         var a = el("a", "has-ico"); a.appendChild(linkIcon(l.url)); a.appendChild(el("span", "lbl", l.title));
-        a.href = l.url; a.target = "_blank"; a.rel = "noopener"; a.title = l.title;
+        a.href = l.url; a.target = "_blank"; a.rel = "noopener"; a.title = l.tip || l.title;   // עמודה H, אחרת שם הקישור
         list.appendChild(a);
       } else {
-        list.appendChild(el("span", "card-text-item", l.title));
+        var txt = el("span", "card-text-item", l.title);
+        if (l.tip) txt.title = l.tip;
+        list.appendChild(txt);
       }
     });
 
