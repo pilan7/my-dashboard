@@ -299,7 +299,7 @@ white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   "use strict";
 
   /* ================= הגדרות ================= */
-  var APP_VERSION = "5.0";
+  var APP_VERSION = "5.2";
   var TEST_MODE = true;  // true = סביבת בדיקה (test.html): בלי Service Worker ובלי בדיקת גרסה אוטומטית
   // 5.0: גרסאות בשליטת המשתמש – כל גרסה יושבת קבועה בתיקייה v/<גרסה>/ ; הכתובת הראשית רק מפנה לגרסה שנבחרה
   var VERSIONED = /\/v\/[^\/]+\/(index\.html)?$/.test(location.pathname);
@@ -1370,6 +1370,10 @@ lines.push("מצב תצוגה: " + MODE_NAMES[getMode()] + (isDark() ? " (מוצ
     window.addEventListener("load", function () {
       navigator.serviceWorker.register("sw.js", { updateViaCache: "none" }).catch(function () {});
     });
+    // 5.2: גרסה קבועה – מוודאים שהדף שלה נשמר במטמון כבר בביקור הראשון (לעבודה בלי רשת)
+    if (VERSIONED) navigator.serviceWorker.ready.then(function () {
+      setTimeout(function () { if (navigator.serviceWorker.controller) fetch(location.pathname).catch(noop); }, 2000);
+    }).catch(noop);
   }
 })();
 </script>
