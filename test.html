@@ -286,7 +286,7 @@ white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   "use strict";
 
   /* ================= הגדרות ================= */
-  var APP_VERSION = "4.7";
+  var APP_VERSION = "4.8";
   var TEST_MODE = true;  // true = סביבת בדיקה (test.html): בלי Service Worker ובלי בדיקת גרסה אוטומטית
   // 4.7: מזהה הגיליון כבר לא קבוע בקוד – המשתמש בוחר את הגיליון פעם אחת (חלון בחירת קבצים של Google) והבחירה נשמרת במכשיר
   var SHEET_KEY    = "PEREZ_SHEET_ID";
@@ -830,6 +830,16 @@ function createCard(pageName, g) {
   }
   $("pickBtn").addEventListener("click", openPicker);
 
+  // 4.8: במכשיר חדש – מחפשים לבד את הגיליון שכבר נבחר בעבר (בהרשאה המצומצמת Drive מחזיר רק קבצים שהאתר קיבל אליהם גישה)
+  var autoFindTried = false;
+  function findKnownSheet(token) {
+    var q = encodeURIComponent("mimeType='application/vnd.google-apps.spreadsheet' and trashed=false");
+    var url = "https://www.googleapis.com/drive/v3/files?q=" + q + "&fields=files(id,name)&orderBy=modifiedTime%20desc&pageSize=10";
+    return fetch(url, { cache: "no-store", headers: { "Authorization": "Bearer " + token } })
+      .then(function (res) { if (!res.ok) throw new Error("drive " + res.status); return res.json(); })
+      .then(function (j) { return (j && j.files) || []; });
+  }
+
   function loadFrom(url, token) {
     var ctrl = ("AbortController" in window) ? new AbortController() : null;
     var timer = ctrl ? setTimeout(function () { ctrl.abort(); }, FETCH_TIMEOUT_MS) : null;
@@ -864,6 +874,22 @@ function createCard(pageName, g) {
       return;
     }
     var sheetId = getSheetId();
+    if (!sheetId && !autoFindTried) {   // 4.8: ניסיון אחד לאתר לבד גיליון שכבר נבחר בחשבון הזה
+      autoFindTried = true;
+      findKnownSheet(token).then(function (files) {
+        if (files.length === 1) {
+          lsSet(SHEET_KEY, files[0].id);
+          authInfo = "הגיליון אותר אוטומטית: " + files[0].name;
+        } else {
+          authInfo = files.length ? "נמצאו " + files.length + " גיליונות – צריך לבחור" : "לא נמצא גיליון קודם – צריך לבחור";
+        }
+        refresh(true);
+      }, function (e) {
+        authInfo = "חיפוש אוטומטי נכשל (" + e.message + ") – צריך לבחור";
+        refresh(true);
+      });
+      return;
+    }
     if (!sheetId) {   // 4.7: עוד לא נבחר גיליון במכשיר הזה
       hideAuth();
       showPick();
